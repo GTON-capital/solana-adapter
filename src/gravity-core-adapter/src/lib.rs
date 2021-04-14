@@ -10,6 +10,9 @@ use solana_program::{
 // use solana_sdk::system_instruction::SystemInstruction;
 use std::mem;
 
+// mod gravity;
+// mod mock;
+
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
