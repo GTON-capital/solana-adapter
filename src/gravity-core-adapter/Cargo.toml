@@ -1,12 +1,11 @@
-
 [package]
-name = "solana-bpf-helloworld"
+name = "solana-gravity-adaptor"
 version = "0.0.1"
-description = "Example template program written in Rust"
-authors = ["Solana Maintainers <maintainers@solana.com>"]
+description = "Gravity Protocol adaptor built on Solana"
+authors = ["Shamil Khalilov <shamfama@gmail.com>"]
 repository = "https://github.com/solana-labs/solana"
 license = "Apache-2.0"
-homepage = "https://solana.com/"
+homepage = "https://gravity.tech"
 edition = "2018"
 
 [features]
@@ -15,6 +14,10 @@ no-entrypoint = []
 [dependencies]
 byteorder = "1.3"
 solana-program = "=1.6.1"
+thiserror = "1.0.24"
+spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
+arrayref = "0.3.6"
+
 
 [dev-dependencies]
 solana-program-test = "=1.6.1"
