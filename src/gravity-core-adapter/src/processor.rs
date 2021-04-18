@@ -25,14 +25,15 @@ impl Processor {
         match instruction {
             GravityContractInstruction::UpdateConsuls{ new_consuls, current_round } => {
                 msg!("Instruction: Update Consuls");
-                Self::process_update_consuls(accounts, new_consuls, current_round, program_id)
-            }
+                Self::process_update_consuls(accounts, new_consuls.as_slice(), current_round, program_id)
+            },
+            // _ => Err(ProgramError)
         }
     }
 
     fn process_update_consuls(
         accounts: &[AccountInfo],
-        new_consuls: &[&Pubkey],
+        new_consuls: &[Pubkey],
         current_round: u64,
         program_id: &Pubkey,
     ) -> ProgramResult {

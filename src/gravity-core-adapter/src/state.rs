@@ -7,24 +7,24 @@ use solana_program::{
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
 
-pub struct GravityContract<'a> {
+pub struct GravityContract {
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
 
     pub bft: u8,
-    pub consuls: Vec<&'a Pubkey>,
+    pub consuls: Vec<Pubkey>,
     pub last_round: u64
 }
 
-impl Sealed for GravityContract<'_> {}
+impl Sealed for GravityContract {}
 
-impl IsInitialized for GravityContract<'_> {
+impl IsInitialized for GravityContract {
     fn is_initialized(&self) -> bool {
         self.is_initialized
     }
 }
 
-impl Pack for GravityContract<'_> {
+impl Pack for GravityContract {
     const LEN: usize = 202;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
@@ -46,9 +46,9 @@ impl Pack for GravityContract<'_> {
             initializer_pubkey: Pubkey::new_from_array(*initializer_pubkey),
             bft: u8::from_le_bytes(*bft),
             consuls: vec![
-                &Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
-                &Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
-                &Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
+                Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
+                Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
+                Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
             ],
             last_round: u64::from_le_bytes(*last_round),
         })
@@ -77,14 +77,12 @@ impl Pack for GravityContract<'_> {
         bft_dst[0] = *bft as u8;
         
         let mut consuls_copy = consuls.clone();
-        consuls_dst = array_ref![
+        consuls_dst.copy_from_slice(
             consuls_copy
                 .iter()
                 .fold(vec![], |acc,x| { vec![acc, x.to_bytes().to_vec()].concat() })
-                .as_slice(),
-            0, 
-            160
-        ];
+                .as_slice()
+        );
 
         *last_round_dst = last_round.to_le_bytes();
     }

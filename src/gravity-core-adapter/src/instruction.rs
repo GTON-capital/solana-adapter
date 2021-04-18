@@ -25,19 +25,19 @@ mod utils {
     }
 }
 
-pub enum GravityContractInstruction<'a> {
-    GetConsuls,
-    GetConsulsByRoundId {
-        current_round: u64
-    },
+pub enum GravityContractInstruction {
+    // GetConsuls,
+    // GetConsulsByRoundId {
+    //     current_round: u64
+    // },
     UpdateConsuls {
-        new_consuls: &'a[&'a Pubkey],
+        new_consuls: Vec<Pubkey>,
         current_round: u64
     }
 }
 
 
-impl<'a> GravityContractInstruction<'a> {
+impl<'a> GravityContractInstruction {
     const bft_alloc: usize = 8;
     const last_round_alloc: usize = 64;
 
@@ -46,34 +46,36 @@ impl<'a> GravityContractInstruction<'a> {
 
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
+        let (tag, _) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
-            0 => Self::GetConsuls,
-            // 
-            // Args:
-            // [u8 - instruction, u256 as u8 array - input round]
-            //
-            1 => Self::GetConsulsByRoundId {
-                current_round: Self::unpack_round(rest)?,
-            },
+            // 0 => Self::GetConsuls,
+            // // 
+            // // Args:
+            // // [u8 - instruction, u256 as u8 array - input round]
+            // //
+            // 1 => Self::GetConsulsByRoundId {
+            //     current_round: Self::unpack_round(rest)?,
+            // },
             // 
             // Args:
             // [u8 - instruction, u8 - bft value, bft value * address as u8 array(concated)]
             //
-            2 => {
-                let new_consuls: Result<&'a[&'a Pubkey], ProgramError> = Self::unpack_consuls(input);
+            0 => {
+                // let new_consuls: Result<&'a[Pubkey];
+                let mut new_consuls = vec![];
+                Self::unpack_consuls(input, &mut new_consuls)?;
 
                 Self::UpdateConsuls {
                     current_round: Self::unpack_round(input)?,
-                    new_consuls: new_consuls?
+                    new_consuls: new_consuls
                 }
             },
             _ => return Err(InvalidInstruction.into()),
         })
     }
 
-    fn unpack_consuls(input: &'a[u8]) -> Result<&'a[&Pubkey], ProgramError> {
+    fn unpack_consuls(input: &'a[u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
         let bft: u8 = input
             .get(Self::bft_range)
             .and_then(|slice| slice.try_into().ok())
@@ -90,18 +92,17 @@ impl<'a> GravityContractInstruction<'a> {
         let consuls_slice = input
             .get(range_start..range_end)
             .ok_or(InvalidInstruction)?;
-        
-        let mut result: Vec<&Pubkey> = Vec::new();
+
+        // let mut result: &mut Vec<Pubkey> = &mut Vec::new();
         let address_alloc: usize = 32;
 
-        // Pubkey::from_str(s: &str)
         for i in 0..bft as usize {
-            let slice = consuls_slice.get(i * address_alloc..(i + 1) * address_alloc).ok_or(InvalidInstruction)?;
-            let pubky = Pubkey::new(slice);
-            result.push(&pubky);
+            // let slice = ;
+            let pubky = Pubkey::new(consuls_slice.get(i * address_alloc..(i + 1) * address_alloc).ok_or(InvalidInstruction)?);
+            dst.push(pubky);
         }
 
-        Ok(result.as_slice())
+        Ok(())
     }
 
     /// Round is considered as first argument and as u256 data type
