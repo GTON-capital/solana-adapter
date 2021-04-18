@@ -38,11 +38,11 @@ pub enum GravityContractInstruction {
 
 
 impl<'a> GravityContractInstruction {
-    const bft_alloc: usize = 8;
-    const last_round_alloc: usize = 64;
+    const BFT_ALLOC: usize = 8;
+    const LAST_ROUND_ALLOC: usize = 64;
 
-    const bft_range: std::ops::Range<usize> = 0..Self::bft_alloc;
-    const last_round_range: std::ops::Range<usize> = Self::bft_alloc..Self::last_round_alloc;
+    const BFT_RANGE: std::ops::Range<usize> = 0..Self::BFT_ALLOC;
+    const LAST_ROUND_RANGE: std::ops::Range<usize> = Self::BFT_ALLOC..Self::LAST_ROUND_ALLOC;
 
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a[u8]) -> Result<Self, ProgramError> {
@@ -77,17 +77,17 @@ impl<'a> GravityContractInstruction {
 
     fn unpack_consuls(input: &'a[u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
         let bft: u8 = input
-            .get(Self::bft_range)
+            .get(Self::BFT_RANGE)
             .and_then(|slice| slice.try_into().ok())
             .map(u8::from_le_bytes)
             .ok_or(InvalidInstruction)?;
-        let last_round: u64 = input
-            .get(Self::last_round_range)
-            .and_then(|slice| slice.try_into().ok())
-            .map(u64::from_le_bytes)
-            .ok_or(InvalidInstruction)?;
+        // let last_round: u64 = input
+        //     .get(Self::LAST_ROUND_RANGE)
+        //     .and_then(|slice| slice.try_into().ok())
+        //     .map(u64::from_le_bytes)
+        //     .ok_or(InvalidInstruction)?;
 
-        let range_start = Self::bft_alloc + Self::last_round_alloc;
+        let range_start = Self::BFT_ALLOC + Self::LAST_ROUND_ALLOC;
         let range_end = range_start * bft as usize;
         let consuls_slice = input
             .get(range_start..range_end)
@@ -108,7 +108,7 @@ impl<'a> GravityContractInstruction {
     /// Round is considered as first argument and as u256 data type
     fn unpack_round(input: &[u8]) -> Result<u64, ProgramError> {
         Ok(input
-            .get(GravityContractInstruction::last_round_range)
+            .get(GravityContractInstruction::LAST_ROUND_RANGE)
             .and_then(|slice| slice.try_into().ok())
             .map(u8::from_le_bytes)
             .ok_or(InvalidInstruction)? as u64)
