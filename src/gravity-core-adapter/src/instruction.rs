@@ -1,4 +1,7 @@
-use solana_program::program_error::ProgramError;
+use solana_program::{
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 use std::convert::TryInto;
 use std::slice::{SliceIndex};
 
@@ -8,62 +11,39 @@ use crate::error::GravityError::InvalidInstruction;
 mod utils {
     use super::*;
 
-    pub fn extract_from_range(input: &[u8], index: std::ops::Range<usize>) -> Result<u64, ProgramError> {
-        let amount = input
+    pub fn extract_from_range<'a, T: std::convert::From<&'a[u8]>, U, F: FnOnce(T) -> U>(
+        input: &'a[u8],
+        index: std::ops::Range<usize>,
+        f: F
+    ) -> Result<U, ProgramError> {
+        let res = input
             .get(index)
             .and_then(|slice| slice.try_into().ok())
-            .map(u64::from_le_bytes)
+            .map(f)
             .ok_or(InvalidInstruction)?;
-        Ok(amount)
+        Ok(res)
     }
 }
 
 pub enum GravityContractInstruction<'a> {
-    /// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA
-    ///
-    ///
-    /// Accounts expected:
-    ///
-    /// 0. `[signer]` The account of the person initializing the escrow
-    /// 1. `[writable]` Temporary token account that should be created prior to this instruction and owned by the initializer
-    /// 2. `[]` The initializer's token account for the token they will receive should the trade go through
-    /// 3. `[writable]` The escrow account, it will hold all necessary info about the trade.
-    /// 4. `[]` The rent sysvar
-    /// 5. `[]` The token program
-    // InitEscrow {
-    //     /// The amount party A expects to receive of token Y
-    //     amount: u64,
-    // },
-    /// Accepts a trade
-    ///
-    ///
-    /// Accounts expected:
-    ///
-    /// 0. `[signer]` The account of the person taking the trade
-    /// 1. `[writable]` The taker's token account for the token they send
-    /// 2. `[writable]` The taker's token account for the token they will receive should the trade go through
-    /// 3. `[writable]` The PDA's temp token account to get tokens from and eventually close
-    /// 4. `[writable]` The initializer's main account to send their rent fees to
-    /// 5. `[writable]` The initializer's token account that will receive tokens
-    /// 6. `[writable]` The escrow account holding the escrow info
-    /// 7. `[]` The token program
-    /// 8. `[]` The PDA account
-    // Exchange {
-    //     /// the amount the taker expects to be paid in the other token, as a u64 because that's the max possible supply of a token
-    //     amount: u64,
-    // },
     GetConsuls,
     GetConsulsByRoundId {
         current_round: u64
     },
     UpdateConsuls {
-        new_consuls: &'a[&'a[u8]],
+        new_consuls: &'a[&'a Pubkey],
         current_round: u64
     }
 }
 
 
 impl<'a> GravityContractInstruction<'a> {
+    const bft_alloc: usize = 8;
+    const last_round_alloc: usize = 64;
+
+    const bft_range: std::ops::Range<usize> = 0..Self::bft_alloc;
+    const last_round_range: std::ops::Range<usize> = Self::bft_alloc..Self::last_round_alloc;
+
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -82,10 +62,7 @@ impl<'a> GravityContractInstruction<'a> {
             // [u8 - instruction, u8 - bft value, bft value * address as u8 array(concated)]
             //
             2 => {
-                let bft_alloc = 8;
-                let bft = utils::extract_from_range(input, 256..256 + bft_alloc)?;
-
-                let new_consuls: Result<&'a[&'a[u8]], ProgramError> = Self::unpack_consuls(input, bft as usize);
+                let new_consuls: Result<&'a[&'a Pubkey], ProgramError> = Self::unpack_consuls(input);
 
                 Self::UpdateConsuls {
                     current_round: Self::unpack_round(input)?,
@@ -96,23 +73,32 @@ impl<'a> GravityContractInstruction<'a> {
         })
     }
 
-    fn unpack_consuls(input: &'a[u8], bft_value: usize) -> Result<&'a[&'a [u8]], ProgramError> {
-        let address_alloc = 256;
-        let input_round_alloc = 256;
-        let range_start = input_round_alloc + 8;
-        let range_end = range_start * bft_value;
+    fn unpack_consuls(input: &'a[u8]) -> Result<&'a[&Pubkey], ProgramError> {
+        let bft: u8 = input
+            .get(Self::bft_range)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u8::from_le_bytes)
+            .ok_or(InvalidInstruction)?;
+        let last_round: u64 = input
+            .get(Self::last_round_range)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(InvalidInstruction)?;
+
+        let range_start = Self::bft_alloc + Self::last_round_alloc;
+        let range_end = range_start * bft as usize;
         let consuls_slice = input
             .get(range_start..range_end)
             .ok_or(InvalidInstruction)?;
         
-        let mut result: Vec<_> = Vec::new();
+        let mut result: Vec<&Pubkey> = Vec::new();
+        let address_alloc: usize = 32;
 
-        for i in 0..bft_value {
-            result.push(
-                // [i, i * 256]
-                consuls_slice.get(i * address_alloc..(i + 1) * address_alloc)
-                .ok_or(InvalidInstruction)?
-            )
+        // Pubkey::from_str(s: &str)
+        for i in 0..bft as usize {
+            let slice = consuls_slice.get(i * address_alloc..(i + 1) * address_alloc).ok_or(InvalidInstruction)?;
+            let pubky = Pubkey::new(slice);
+            result.push(&pubky);
         }
 
         Ok(result.as_slice())
@@ -120,31 +106,10 @@ impl<'a> GravityContractInstruction<'a> {
 
     /// Round is considered as first argument and as u256 data type
     fn unpack_round(input: &[u8]) -> Result<u64, ProgramError> {
-        utils::extract_from_range(input, 0..256)
+        Ok(input
+            .get(GravityContractInstruction::last_round_range)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u8::from_le_bytes)
+            .ok_or(InvalidInstruction)? as u64)
     }
 }
-// impl EscrowInstruction {
-//     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
-//     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-//         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-
-//         Ok(match tag {
-//             0 => Self::InitEscrow {
-//                 amount: Self::unpack_amount(rest)?,
-//             },
-//             1 => Self::Exchange {
-//                 amount: Self::unpack_amount(rest)?,
-//             },
-//             _ => return Err(InvalidInstruction.into()),
-//         })
-//     }
-
-//     fn unpack_amount(input: &[u8]) -> Result<u64, ProgramError> {
-//         let amount = input
-//             .get(..8)
-//             .and_then(|slice| slice.try_into().ok())
-//             .map(u64::from_le_bytes)
-//             .ok_or(InvalidInstruction)?;
-//         Ok(amount)
-//     }
-// }
