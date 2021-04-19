@@ -26,10 +26,6 @@ mod utils {
 }
 
 pub enum GravityContractInstruction {
-    // GetConsuls,
-    // GetConsulsByRoundId {
-    //     current_round: u64
-    // },
     InitContract {
         new_consuls: Vec<Pubkey>,
         current_round: u64,
@@ -100,7 +96,11 @@ impl<'a> GravityContractInstruction {
 
         for i in 0..bft as usize {
             // let slice = ;
-            let pubky = Pubkey::new(consuls_slice.get(i * address_alloc..(i + 1) * address_alloc).ok_or(InvalidInstruction)?);
+            let pubky = Pubkey::new(
+                consuls_slice
+                    .get(i * address_alloc..(i + 1) * address_alloc)
+                    .ok_or(InvalidInstruction)?
+                );
             dst.push(pubky);
         }
 

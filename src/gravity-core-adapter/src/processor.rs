@@ -73,7 +73,7 @@ impl Processor {
         GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.data.borrow_mut())?;
         
         msg!(
-            format!("{:x?}", gravity_contract_account.data.borrow())
+            format!("{:x?}", gravity_contract_account.data.borrow()).as_ref()
         );
 
         Ok(())
