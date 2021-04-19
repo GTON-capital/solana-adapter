@@ -5,6 +5,9 @@ use solana_program::{
 use std::convert::TryInto;
 use std::slice::{SliceIndex};
 
+use hex;
+
+use crate::state::WrappedResult;
 use crate::error::GravityError::InvalidInstruction;
 
 
@@ -114,5 +117,23 @@ impl<'a> GravityContractInstruction {
             .and_then(|slice| slice.try_into().ok())
             .map(u8::from_le_bytes)
             .ok_or(InvalidInstruction)? as u64)
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_raw_input() -> WrappedResult<()> {
+        let raw_tx_input = "0003f872d107a7b14923cde74b1bd4db800bd1c8e760eeaacd4b62d91e8074f2f66b3be181103d34cbcc048bf08c4764880f01b77454d4f69f022f9befeb0de95ac148a3e124c22a138ec3037538cd72201fc4bfa92cdcb709f9c4218fe24eae41870000000000000000";
+    
+        let serialized_gravity_contract_bytes = hex::decode(raw_tx_input)?;
+        
+        GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())?;
+
+        Ok(())
     }
 }

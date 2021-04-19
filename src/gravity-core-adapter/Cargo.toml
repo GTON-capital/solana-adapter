@@ -17,12 +17,13 @@ solana-program = "=1.6.1"
 thiserror = "1.0.24"
 spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
-tokio = "1.5.0"
-rand = "0.8.3"
+hex = "0.4.3"
 
 [dev-dependencies]
 solana-program-test = "=1.6.1"
 solana-sdk = "=1.6.1"
+tokio = "1.5.0"
+rand = "0.8.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

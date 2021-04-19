@@ -2366,6 +2366,7 @@ version = "0.0.1"
 dependencies = [
  "arrayref",
  "byteorder",
+ "hex",
  "rand 0.8.3",
  "solana-program",
  "solana-program-test",
