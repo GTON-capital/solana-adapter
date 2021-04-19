@@ -76,7 +76,7 @@ impl Pack for GravityContract {
         initializer_pubkey_dst.copy_from_slice(initializer_pubkey.as_ref());
         bft_dst[0] = *bft as u8;
         
-        let mut consuls_copy = consuls.clone();
+        let consuls_copy = consuls.clone();
         consuls_dst.copy_from_slice(
             consuls_copy
                 .iter()

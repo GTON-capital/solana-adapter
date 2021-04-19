@@ -30,6 +30,11 @@ pub enum GravityContractInstruction {
     // GetConsulsByRoundId {
     //     current_round: u64
     // },
+    InitContract {
+        new_consuls: Vec<Pubkey>,
+        current_round: u64,
+        bft: u8
+    },
     UpdateConsuls {
         new_consuls: Vec<Pubkey>,
         current_round: u64
@@ -49,43 +54,40 @@ impl<'a> GravityContractInstruction {
         let (tag, _) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
-            // 0 => Self::GetConsuls,
-            // // 
-            // // Args:
-            // // [u8 - instruction, u256 as u8 array - input round]
-            // //
-            // 1 => Self::GetConsulsByRoundId {
-            //     current_round: Self::unpack_round(rest)?,
-            // },
-            // 
-            // Args:
-            // [u8 - instruction, u8 - bft value, bft value * address as u8 array(concated)]
-            //
             0 => {
-                // let new_consuls: Result<&'a[Pubkey];
+                let bft: u8 = Self::unpack_bft(input)?;
+                let mut new_consuls = vec![];
+                Self::unpack_consuls(input, &mut new_consuls)?;
+
+                Self::InitContract {
+                    current_round: Self::unpack_round(input)?,
+                    new_consuls: new_consuls,
+                    bft: bft
+                }
+            },
+            1 => {
                 let mut new_consuls = vec![];
                 Self::unpack_consuls(input, &mut new_consuls)?;
 
                 Self::UpdateConsuls {
                     current_round: Self::unpack_round(input)?,
-                    new_consuls: new_consuls
+                    new_consuls: new_consuls,
                 }
             },
             _ => return Err(InvalidInstruction.into()),
         })
     }
 
-    fn unpack_consuls(input: &'a[u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
-        let bft: u8 = input
+    fn unpack_bft(input: &'a[u8]) -> Result<u8, ProgramError> {
+        Ok(input
             .get(Self::BFT_RANGE)
             .and_then(|slice| slice.try_into().ok())
             .map(u8::from_le_bytes)
-            .ok_or(InvalidInstruction)?;
-        // let last_round: u64 = input
-        //     .get(Self::LAST_ROUND_RANGE)
-        //     .and_then(|slice| slice.try_into().ok())
-        //     .map(u64::from_le_bytes)
-        //     .ok_or(InvalidInstruction)?;
+            .ok_or(InvalidInstruction)?)
+    }
+
+    fn unpack_consuls(input: &'a[u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
+        let bft: u8 = Self::unpack_bft(input)?;
 
         let range_start = Self::BFT_ALLOC + Self::LAST_ROUND_ALLOC;
         let range_end = range_start * bft as usize;

@@ -23,12 +23,60 @@ impl Processor {
         let instruction = GravityContractInstruction::unpack(instruction_data)?;
 
         match instruction {
+            GravityContractInstruction::InitContract { new_consuls, current_round, bft } => {
+                msg!("Instruction: Update Consuls");
+                Self::process_init_gravity_contract(accounts, new_consuls.as_slice(), current_round, bft, program_id)
+            },
             GravityContractInstruction::UpdateConsuls{ new_consuls, current_round } => {
                 msg!("Instruction: Update Consuls");
                 Self::process_update_consuls(accounts, new_consuls.as_slice(), current_round, program_id)
             },
-            // _ => Err(ProgramError)
         }
+    }
+
+    fn process_init_gravity_contract(
+        accounts: &[AccountInfo],
+        new_consuls: &[Pubkey],
+        current_round: u64,
+        bft: u8,
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let initializer = next_account_info(account_info_iter)?;
+
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let gravity_contract_account = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+
+        if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
+            return Err(GravityError::NotRentExempt.into());
+        }
+
+        let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
+        if gravity_contract_info.is_initialized() {
+            return Err(ProgramError::AccountAlreadyInitialized);
+        }
+
+        gravity_contract_info.is_initialized = true;
+        gravity_contract_info.initializer_pubkey = *initializer.key;
+        gravity_contract_info.bft = bft;
+
+        gravity_contract_info.consuls = new_consuls.to_vec();
+        gravity_contract_info.last_round = current_round;
+
+        msg!("about to persist data to contract\n");
+        msg!("byte array: \n");
+        
+        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.data.borrow_mut())?;
+        
+        msg!(
+            format!("{:x?}", gravity_contract_account.data.borrow())
+        );
+
+        Ok(())
     }
 
     fn process_update_consuls(
@@ -52,41 +100,25 @@ impl Processor {
         }
 
         let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
-        if gravity_contract_info.is_initialized() {
-            return Err(ProgramError::AccountAlreadyInitialized);
+        if !gravity_contract_info.is_initialized() {
+            return Err(ProgramError::UninitializedAccount);
         }
 
+        msg!("current round: {:}\n", gravity_contract_info.last_round);
 
-        gravity_contract_info.is_initialized = true;
-        gravity_contract_info.initializer_pubkey = *initializer.key;
-        gravity_contract_info.bft = 3;
+        msg!("iterating current consuls \n");
+        for (i, consul) in gravity_contract_info.consuls.iter().enumerate() {
+            msg!("current consul #{:} is \n", i);
+            consul.log();
+        }
 
-        gravity_contract_info.consuls = new_consuls.to_vec();
-        gravity_contract_info.last_round = current_round;
+        msg!("input round: {:}\n", current_round);
 
-        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.data.borrow_mut())?;
-        let (pda, _nonce) = Pubkey::find_program_address(&[b"gravity_contract"], program_id);
-
-        let gravity_contract_program = next_account_info(account_info_iter)?;
-
-        // let owner_change_ix = spl_token::instruction::set_authority(
-        //     gravity_contract_program.key,
-        //     temp_token_account.key,
-        //     Some(&pda),
-        //     spl_token::instruction::AuthorityType::AccountOwner,
-        //     initializer.key,
-        //     &[&initializer.key],
-        // )?;
-
-        // msg!("Calling the token program to transfer token account ownership...");
-        // invoke(
-        //     &owner_change_ix,
-        //     &[
-        //         temp_token_account.clone(),
-        //         initializer.clone(),
-        //         token_program.clone(),
-        //     ],
-        // )?;
+        msg!("iterating input consuls \n");
+        for (i, consul) in new_consuls.iter().enumerate() {
+            msg!("input consul #{:} is \n", i);
+            consul.log();
+        }
 
         Ok(())
     }
