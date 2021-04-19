@@ -39,7 +39,7 @@ pub enum GravityContractInstruction {
 
 
 impl<'a> GravityContractInstruction {
-    const BFT_ALLOC: usize = 8;
+    const BFT_ALLOC: usize = 1;
     const LAST_ROUND_ALLOC: usize = 64;
 
     const BFT_RANGE: std::ops::Range<usize> = 0..Self::BFT_ALLOC;
