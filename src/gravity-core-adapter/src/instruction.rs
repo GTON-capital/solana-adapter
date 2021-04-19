@@ -43,10 +43,10 @@ pub enum GravityContractInstruction {
 
 impl<'a> GravityContractInstruction {
     const BFT_ALLOC: usize = 1;
-    const LAST_ROUND_ALLOC: usize = 64;
+    const PUBKEY_ALLOC: usize = 32;
+    const LAST_ROUND_ALLOC: usize = 8;
 
     const BFT_RANGE: std::ops::Range<usize> = 0..Self::BFT_ALLOC;
-    const LAST_ROUND_RANGE: std::ops::Range<usize> = Self::BFT_ALLOC..Self::LAST_ROUND_ALLOC;
 
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a[u8]) -> Result<Self, ProgramError> {
@@ -55,11 +55,16 @@ impl<'a> GravityContractInstruction {
         Ok(match tag {
             0 => {
                 let bft: u8 = Self::unpack_bft(rest)?;
+                println!("bft: {:}", bft);
+
                 let mut new_consuls = vec![];
                 Self::unpack_consuls(rest, &mut new_consuls)?;
+                println!("consuls: {:?}", new_consuls);
+
+                let current_round = Self::unpack_round(bft, rest)?;
 
                 Self::InitContract {
-                    current_round: Self::unpack_round(rest)?,
+                    current_round: current_round,
                     new_consuls: new_consuls,
                     bft: bft
                 }
@@ -69,7 +74,7 @@ impl<'a> GravityContractInstruction {
                 Self::unpack_consuls(rest, &mut new_consuls)?;
 
                 Self::UpdateConsuls {
-                    current_round: Self::unpack_round(rest)?,
+                    current_round: Self::unpack_round(3, rest)?,
                     new_consuls: new_consuls,
                 }
             },
@@ -88,17 +93,17 @@ impl<'a> GravityContractInstruction {
     fn unpack_consuls(input: &'a[u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
         let bft: u8 = Self::unpack_bft(input)?;
 
-        let range_start = Self::BFT_ALLOC + Self::LAST_ROUND_ALLOC;
-        let range_end = range_start * bft as usize;
+        let range_start = Self::BFT_ALLOC;
+        let range_end = range_start + 32 * bft as usize;
         let consuls_slice = input
             .get(range_start..range_end)
             .ok_or(InvalidInstruction)?;
 
-        // let mut result: &mut Vec<Pubkey> = &mut Vec::new();
+        // assert!(consuls_slice.len() == 3 * 32);
+
         let address_alloc: usize = 32;
 
         for i in 0..bft as usize {
-            // let slice = ;
             let pubky = Pubkey::new(
                 consuls_slice
                     .get(i * address_alloc..(i + 1) * address_alloc)
@@ -111,12 +116,13 @@ impl<'a> GravityContractInstruction {
     }
 
     /// Round is considered as first argument and as u256 data type
-    fn unpack_round(input: &[u8]) -> Result<u64, ProgramError> {
+    fn unpack_round(bft: u8, input: &[u8]) -> Result<u64, ProgramError> {
+        let start_offset = Self::BFT_ALLOC + (Self::PUBKEY_ALLOC * bft as usize);
         Ok(input
-            .get(GravityContractInstruction::LAST_ROUND_RANGE)
+            .get(start_offset..start_offset + Self::LAST_ROUND_ALLOC)
             .and_then(|slice| slice.try_into().ok())
-            .map(u8::from_le_bytes)
-            .ok_or(InvalidInstruction)? as u64)
+            .map(u64::from_le_bytes)
+            .ok_or(InvalidInstruction)?)
     }
 }
 
@@ -131,8 +137,10 @@ mod tests {
         let raw_tx_input = "0003f872d107a7b14923cde74b1bd4db800bd1c8e760eeaacd4b62d91e8074f2f66b3be181103d34cbcc048bf08c4764880f01b77454d4f69f022f9befeb0de95ac148a3e124c22a138ec3037538cd72201fc4bfa92cdcb709f9c4218fe24eae41870000000000000000";
     
         let serialized_gravity_contract_bytes = hex::decode(raw_tx_input)?;
+        println!("{:?}", serialized_gravity_contract_bytes);
         
-        GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())?;
+        GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())
+            .expect("deser failed!");
 
         Ok(())
     }
