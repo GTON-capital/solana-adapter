@@ -47,26 +47,26 @@ impl<'a> GravityContractInstruction {
 
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a[u8]) -> Result<Self, ProgramError> {
-        let (tag, _) = input.split_first().ok_or(InvalidInstruction)?;
+        let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
             0 => {
-                let bft: u8 = Self::unpack_bft(input)?;
+                let bft: u8 = Self::unpack_bft(rest)?;
                 let mut new_consuls = vec![];
-                Self::unpack_consuls(input, &mut new_consuls)?;
+                Self::unpack_consuls(rest, &mut new_consuls)?;
 
                 Self::InitContract {
-                    current_round: Self::unpack_round(input)?,
+                    current_round: Self::unpack_round(rest)?,
                     new_consuls: new_consuls,
                     bft: bft
                 }
             },
             1 => {
                 let mut new_consuls = vec![];
-                Self::unpack_consuls(input, &mut new_consuls)?;
+                Self::unpack_consuls(rest, &mut new_consuls)?;
 
                 Self::UpdateConsuls {
-                    current_round: Self::unpack_round(input)?,
+                    current_round: Self::unpack_round(rest)?,
                     new_consuls: new_consuls,
                 }
             },
