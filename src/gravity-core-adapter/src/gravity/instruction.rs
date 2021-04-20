@@ -5,9 +5,8 @@ use solana_program::{
 use std::convert::TryInto;
 use std::slice::{SliceIndex};
 
-use hex;
-
-use crate::state::WrappedResult;
+// use hex;
+// use crate::state::misc::WrappedResult;
 use crate::error::GravityError::InvalidInstruction;
 
 
@@ -131,6 +130,7 @@ impl<'a> GravityContractInstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::misc::WrappedResult;
 
     #[test]
     fn test_raw_input() -> WrappedResult<()> {

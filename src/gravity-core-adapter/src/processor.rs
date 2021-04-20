@@ -11,7 +11,11 @@ use solana_program::{
 
 use spl_token::state::Account as TokenAccount;
 
-use crate::{error::GravityError, instruction::GravityContractInstruction, state::GravityContract};
+use crate::{
+    error::GravityError, 
+    gravity::instruction::GravityContractInstruction,
+    gravity::state::GravityContract
+};
 
 pub struct Processor;
 impl Processor {
