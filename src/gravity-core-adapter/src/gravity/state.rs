@@ -1,6 +1,7 @@
 use std::fmt;
 
 use solana_program::{
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -50,7 +51,15 @@ impl IsInitialized for GravityContract {
 
 impl Pack for GravityContract {
     const LEN: usize = 138;
-
+    fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        msg!("bullshit dst len: {:} \n", dst.len());
+        msg!("bullshit self len: {:} \n", Self::LEN);
+        if dst.len() != Self::LEN {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        src.pack_into_slice(dst);
+        Ok(())
+    }
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
