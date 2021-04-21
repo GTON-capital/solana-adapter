@@ -117,7 +117,7 @@ impl Pack for GravityContract {
 mod tests {
     use super::*;
 
-    use crate::state::misc::WrappedResult;
+    use crate::gravity::misc::WrappedResult;
 
     extern crate hex;
     extern crate rand;

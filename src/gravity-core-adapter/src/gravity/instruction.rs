@@ -130,7 +130,7 @@ impl<'a> GravityContractInstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::misc::WrappedResult;
+    use crate::gravity::misc::WrappedResult;
 
     #[test]
     fn test_raw_input() -> WrappedResult<()> {

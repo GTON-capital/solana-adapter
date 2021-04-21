@@ -28,7 +28,7 @@ impl Processor {
 
         match instruction {
             GravityContractInstruction::InitContract { new_consuls, current_round, bft } => {
-                msg!("Instruction: Update Consuls");
+                msg!("Instruction: Init Consuls");
                 Self::process_init_gravity_contract(accounts, new_consuls.as_slice(), current_round, bft, program_id)
             },
             GravityContractInstruction::UpdateConsuls{ new_consuls, current_round } => {
@@ -53,11 +53,11 @@ impl Processor {
         }
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        // let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
-        if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
-            return Err(GravityError::NotRentExempt.into());
-        }
+        // if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
+        //     return Err(GravityError::NotRentExempt.into());
+        // }
 
         let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
         if gravity_contract_info.is_initialized() {
@@ -97,11 +97,11 @@ impl Processor {
         }
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        // let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
 
-        if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
-            return Err(GravityError::NotRentExempt.into());
-        }
+        // if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
+        //     return Err(GravityError::NotRentExempt.into());
+        // }
 
         let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
         if !gravity_contract_info.is_initialized() {
