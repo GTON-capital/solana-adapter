@@ -78,9 +78,9 @@ impl Processor {
 
         let mut gravity_contract_info =
             GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
-        if gravity_contract_info.is_initialized() {
-            return Err(ProgramError::AccountAlreadyInitialized);
-        }
+        // if gravity_contract_info.is_initialized() {
+        //     return Err(ProgramError::AccountAlreadyInitialized);
+        // }
 
         gravity_contract_info.is_initialized = true;
         gravity_contract_info.initializer_pubkey = *initializer.key;
