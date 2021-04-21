@@ -90,7 +90,8 @@ impl Processor {
         gravity_contract_info.last_round = current_round;
 
         msg!("about to persist data to contract\n");
-        msg!("byte array: \n");
+        // msg!("byte array: \n");
+        msg!("gravity contract: {:} \n", gravity_contract_info);
 
         // GravityContract::pack(
         //     gravity_contract_info,
