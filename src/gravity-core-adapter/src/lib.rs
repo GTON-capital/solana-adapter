@@ -1,5 +1,5 @@
-mod processor;
 mod error;
+mod processor;
 
 mod gravity;
 mod tests;

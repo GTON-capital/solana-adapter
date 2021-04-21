@@ -12,9 +12,8 @@ use solana_program::{
 use spl_token::state::Account as TokenAccount;
 
 use crate::{
-    error::GravityError, 
-    gravity::instruction::GravityContractInstruction,
-    gravity::state::GravityContract
+    error::GravityError, gravity::instruction::GravityContractInstruction,
+    gravity::state::GravityContract,
 };
 
 pub struct Processor;
@@ -27,14 +26,32 @@ impl Processor {
         let instruction = GravityContractInstruction::unpack(instruction_data)?;
 
         match instruction {
-            GravityContractInstruction::InitContract { new_consuls, current_round, bft } => {
+            GravityContractInstruction::InitContract {
+                new_consuls,
+                current_round,
+                bft,
+            } => {
                 msg!("Instruction: Init Consuls");
-                Self::process_init_gravity_contract(accounts, new_consuls.as_slice(), current_round, bft, program_id)
-            },
-            GravityContractInstruction::UpdateConsuls{ new_consuls, current_round } => {
+                Self::process_init_gravity_contract(
+                    accounts,
+                    new_consuls.as_slice(),
+                    current_round,
+                    bft,
+                    program_id,
+                )
+            }
+            GravityContractInstruction::UpdateConsuls {
+                new_consuls,
+                current_round,
+            } => {
                 msg!("Instruction: Update Consuls");
-                Self::process_update_consuls(accounts, new_consuls.as_slice(), current_round, program_id)
-            },
+                Self::process_update_consuls(
+                    accounts,
+                    new_consuls.as_slice(),
+                    current_round,
+                    program_id,
+                )
+            }
         }
     }
 
@@ -59,7 +76,8 @@ impl Processor {
         //     return Err(GravityError::NotRentExempt.into());
         // }
 
-        let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
+        let mut gravity_contract_info =
+            GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
         if gravity_contract_info.is_initialized() {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
@@ -73,12 +91,13 @@ impl Processor {
 
         msg!("about to persist data to contract\n");
         msg!("byte array: \n");
-        
-        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.data.borrow_mut())?;
-        
-        msg!(
-            format!("{:x?}", gravity_contract_account.data.borrow()).as_ref()
-        );
+
+        GravityContract::pack(
+            gravity_contract_info,
+            &mut gravity_contract_account.data.borrow_mut(),
+        )?;
+
+        msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
 
         Ok(())
     }
@@ -103,7 +122,8 @@ impl Processor {
         //     return Err(GravityError::NotRentExempt.into());
         // }
 
-        let mut gravity_contract_info = GravityContract::unpack(&gravity_contract_account.data.borrow())?;
+        let mut gravity_contract_info =
+            GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
         if !gravity_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
         }

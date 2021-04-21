@@ -23,7 +23,7 @@ pub struct GravityContract {
 
     pub bft: u8,
     pub consuls: Vec<Pubkey>,
-    pub last_round: u64
+    pub last_round: u64,
 }
 
 impl fmt::Display for GravityContract {
@@ -53,13 +53,8 @@ impl Pack for GravityContract {
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
-        let (
-            is_initialized,
-            initializer_pubkey,
-            bft,
-            consuls,
-            last_round,
-        ) = array_refs![src, 1, 32, 1, 32 * 3, 8];
+        let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
+            array_refs![src, 1, 32, 1, 32 * 3, 8];
         let is_initialized = match is_initialized {
             [0] => false,
             [1] => true,
@@ -81,13 +76,8 @@ impl Pack for GravityContract {
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let dst = array_mut_ref![dst, 0, GravityContract::LEN];
-        let (
-            is_initialized_dst,
-            initializer_pubkey_dst,
-            bft_dst,
-            consuls_dst,
-            last_round_dst,
-        ) = mut_array_refs![dst, 1, 32, 1, 32 * 3, 8];
+        let (is_initialized_dst, initializer_pubkey_dst, bft_dst, consuls_dst, last_round_dst) =
+            mut_array_refs![dst, 1, 32, 1, 32 * 3, 8];
 
         let GravityContract {
             is_initialized,
@@ -96,17 +86,17 @@ impl Pack for GravityContract {
             consuls,
             last_round,
         } = self;
-        
+
         is_initialized_dst[0] = *is_initialized as u8;
         initializer_pubkey_dst.copy_from_slice(initializer_pubkey.as_ref());
         bft_dst[0] = *bft as u8;
-        
+
         let consuls_copy = consuls.clone();
         consuls_dst.copy_from_slice(
             consuls_copy
                 .iter()
-                .fold(vec![], |acc,x| { vec![acc, x.to_bytes().to_vec()].concat() })
-                .as_slice()
+                .fold(vec![], |acc, x| vec![acc, x.to_bytes().to_vec()].concat())
+                .as_slice(),
         );
 
         *last_round_dst = last_round.to_le_bytes();
@@ -121,9 +111,8 @@ mod tests {
 
     extern crate hex;
     extern crate rand;
-    
+
     use rand::random;
-        
 
     fn build_gravity_contract_mock() -> GravityContract {
         let mock_gravity_consuls = vec![
@@ -156,8 +145,9 @@ mod tests {
         gravity_contract_mock.pack_into_slice(&mut serialized_gravity_contract_bytes);
 
         // deserialize
-        let deserialized_gravity_contract = GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
-            .expect("deserialization failed!");
+        let deserialized_gravity_contract =
+            GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
+                .expect("deserialization failed!");
 
         assert!(deserialized_gravity_contract == gravity_contract_mock);
 
@@ -168,19 +158,31 @@ mod tests {
     #[test]
     fn test_raw_tx_deser() -> WrappedResult<()> {
         let raw_tx_inputs = vec![
-            "01130552cdea768b3a63553a978383d007e6e1c4be5c3544cd2a657c31720aef51a2a5e31a12722fdbe3e7ac8877467fa0389487c5a4725795506ff8dbcd85910301000103bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c853b243370dff1af837da92b91fc34b6b25bc35c011fdc1061512a3a01ea324b06be8f3dc36da246f1c085fd38b1591451bde88f5681ad8418bc6098ae2852d8da866463c16e94fc8fa3345d678c24a0703f3dfa24d49af313b4279d7e6d8ee5ed01020200016100cf0a594a522816ef0953a69843607a51450c928f3c23ba552c1a6262ac43430787fd12467b9ad4cff20aaa8b5b8850c29165d68d5d17eb571f143f72842a12ab7e143ebaf52b647ce4c4d1fb57ba3e1d3a6da3ff9300feff288c389146e54bd9"
+            "01000103bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c853b243370dff1af837da92b91fc34b6b25bc35c011fdc1061512a3a01ea324b06be8f3dc36da246f1c085fd38b1591451bde88f5681ad8418bc6098ae2852d8daac70d058d54bf86d8a417bcea4f9c98f02a27d25c4744836a7e239df600a347401020200016a0003bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c852e01163f621519827bd0cb00cfab7f0e4bd432a1ead4e792dea13d6b6d4f6da784d4adcfec5a47849ca331117fbfb1894123239237c0ee1f53e2478cf190fbb00000000000000000"
         ];
-        
+
         for (i, input) in raw_tx_inputs.iter().enumerate() {
             // let decoded_string = hex::decode("48656c6c6f20776f726c6421");
-            let mut serialized_gravity_contract_bytes = hex::decode(input)
-            .expect("hex string to bytes cast failed!");
+            let mut serialized_gravity_contract_bytes =
+                hex::decode(input).expect("hex string to bytes cast failed!");
+
+            println!("len is: {} \n", serialized_gravity_contract_bytes.len());
 
             // deserialize
-            let deserialized_gravity_contract = GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
-                .expect("deserialization failed!");
+            let deserialized_gravity_contract =
+                GravityContract::unpack(&mut serialized_gravity_contract_bytes[0..138])
+                    .expect("deserialization failed!");
+            // let deserialized_gravity_contract = GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
+            //     .expect("deserialization failed!");
 
-            println!("contract #{:} from raw tx: \n {:} \n", i, deserialized_gravity_contract);
+            println!(
+                "contract #{:} from raw tx: \n {:} \n",
+                i, deserialized_gravity_contract
+            );
+            println!(
+                "deserialized_gravity_contract: {:}",
+                deserialized_gravity_contract
+            );
         }
 
         Ok(())
