@@ -90,14 +90,15 @@ impl Processor {
         gravity_contract_info.last_round = current_round;
 
         msg!("about to persist data to contract\n");
-        msg!("byte array: \n");
+        // msg!("byte array: \n");
+        msg!("gravity contract: {:} \n", gravity_contract_info);
 
-        GravityContract::pack(
-            gravity_contract_info,
-            &mut gravity_contract_account.data.borrow_mut(),
-        )?;
+        // GravityContract::pack(
+        //     gravity_contract_info,
+        //     &mut gravity_contract_account.data.borrow_mut(),
+        // )?;
 
-        msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
+        // msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
 
         Ok(())
     }
