@@ -44,7 +44,7 @@ impl Sealed for GravityContract {}
 
 impl IsInitialized for GravityContract {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        true
     }
 }
 
