@@ -77,7 +77,7 @@ impl Processor {
         // }
 
         let mut gravity_contract_info =
-            GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
+            GravityContract::unpack(&gravity_contract_account.try_borrow_mut_data()?[0..138])?;
         // if gravity_contract_info.is_initialized() {
         //     return Err(ProgramError::AccountAlreadyInitialized);
         // }
@@ -92,12 +92,12 @@ impl Processor {
         msg!("about to persist data to contract\n");
         msg!("byte array: \n");
 
-        GravityContract::pack(
-            gravity_contract_info,
-            &mut gravity_contract_account.data.borrow_mut(),
-        )?;
+        // GravityContract::pack(
+        //     gravity_contract_info,
+        //     &mut gravity_contract_account.try_borrow_mut_data(),
+        // )?;
 
-        msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
+        // msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
 
         Ok(())
     }

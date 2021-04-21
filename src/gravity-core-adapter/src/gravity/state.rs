@@ -55,11 +55,12 @@ impl Pack for GravityContract {
         let src = array_ref![src, 0, GravityContract::LEN];
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
             array_refs![src, 1, 32, 1, 32 * 3, 8];
-        let is_initialized = match is_initialized {
-            [0] => false,
-            [1] => true,
-            _ => return Err(ProgramError::InvalidAccountData),
-        };
+        let is_initialized = is_initialized[0] != 0;
+        // match is_initialized {
+        //     [0] => false,
+        //     [1] => true,
+        //     _ => return Err(ProgramError::InvalidAccountData),
+        // };
 
         Ok(GravityContract {
             is_initialized,
