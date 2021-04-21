@@ -92,16 +92,11 @@ impl Processor {
         msg!("about to persist data to contract\n");
         // msg!("byte array: \n");
         msg!("gravity contract: {:} \n", gravity_contract_info);
-        let mut data = [u8::from(0); 138];
-        msg!("data len: {:} \n", data.len());
+
         msg!("gravity contract len: {:} \n", GravityContract::LEN);
         msg!("get packet len: {:} \n", GravityContract::get_packed_len());
 
-        GravityContract::pack(gravity_contract_info, &mut data)?;
-        let mut target_data = &mut gravity_contract_account.try_borrow_mut_data()?;
-        for (i, c) in data.iter().enumerate() {
-            target_data[i] = *c;
-        }
+        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
 
         // msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
 
