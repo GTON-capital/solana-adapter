@@ -1,4 +1,8 @@
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+use spl_token::state::Multisig;
 use std::convert::TryInto;
 use std::slice::SliceIndex;
 

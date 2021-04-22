@@ -41,6 +41,18 @@ impl fmt::Display for GravityContract {
     }
 }
 
+pub trait PartialStorage {
+    const DATA_RANGE: std::ops::Range<usize>;
+
+    fn store_at<'a>(raw_data: &'a [u8]) -> &'a [u8] {
+        return &raw_data[Self::DATA_RANGE]
+    }
+}
+
+impl PartialStorage for GravityContract {
+    const DATA_RANGE: std::ops::Range<usize> = 0..138;
+}
+
 impl Sealed for GravityContract {}
 
 impl IsInitialized for GravityContract {
@@ -104,6 +116,7 @@ impl Pack for GravityContract {
         *last_round_dst = last_round.to_le_bytes();
     }
 }
+
 
 #[cfg(test)]
 mod tests {

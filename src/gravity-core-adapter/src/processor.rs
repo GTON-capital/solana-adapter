@@ -9,7 +9,16 @@ use solana_program::{
     sysvar::{rent::Rent, Sysvar},
 };
 
-use spl_token::state::Account as TokenAccount;
+use spl_token::{
+    instruction::initialize_multisig,
+    // state::Account as TokenAccount
+    error::TokenError,
+    instruction::is_valid_signer_index,
+
+    processor::Processor::process_initialize_multisig,
+    processor::Processor::validate_owner,
+    state::Multisig,
+};
 
 use crate::{
     error::GravityError, gravity::instruction::GravityContractInstruction,
@@ -20,6 +29,7 @@ pub struct Processor;
 impl Processor {
     pub fn process(
         program_id: &Pubkey,
+        mutlisig_program_id: &Pubkey,
         accounts: &[AccountInfo],
         instruction_data: &[u8],
     ) -> ProgramResult {
@@ -32,11 +42,13 @@ impl Processor {
                 bft,
             } => {
                 msg!("Instruction: Init Consuls");
+
                 Self::process_init_gravity_contract(
                     accounts,
                     new_consuls.as_slice(),
                     current_round,
                     bft,
+                    mutlisig_program_id,
                     program_id,
                 )
             }
@@ -60,9 +72,11 @@ impl Processor {
         new_consuls: &[Pubkey],
         current_round: u64,
         bft: u8,
+        multisig_program_id: &Pubkey,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
 
         if !initializer.is_signer {
@@ -89,7 +103,9 @@ impl Processor {
         gravity_contract_info.consuls = new_consuls.to_vec();
         gravity_contract_info.last_round = current_round;
 
-        msg!("about to persist data to contract\n");
+
+        msg!("checking bft multisignature");
+
         // msg!("byte array: \n");
         msg!("gravity contract: {:} \n", gravity_contract_info);
 
@@ -98,12 +114,58 @@ impl Processor {
 
         GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
 
-        // msg!(format!("{:x?}", gravity_contract_account.data.borrow()).as_ref());
+        let multisig_signers: Vec<&Pubkey> = new_consuls
+            .to_vec()
+            .iter()
+            .collect();
+
+        msg!("building multisig instruction");
+        let instruction = initialize_multisig(&multisig_program_id, multisig_program_id, &multisig_signers, bft)?;
+        msg!("built multisig instruction");
+
+        msg!("initializing multisig program");
+        process_initialize_multisig(accounts, bft);
+        msg!("initialized multisig program!");
 
         Ok(())
     }
 
-    fn process_update_consuls(
+    // pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+    //     let account_info_iter = &mut accounts.iter();
+    //     let multisig_info = next_account_info(account_info_iter)?;
+    //     let multisig_info_data_len = multisig_info.data_len();
+    //     // let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+
+    //     let mut multisig = Multisig::unpack_unchecked(&multisig_info.try_borrow_data()?)?;
+    //     if multisig.is_initialized {
+    //         return Err(TokenError::AlreadyInUse.into());
+    //     }
+
+    //     // if !rent.is_exempt(multisig_info.lamports(), multisig_info_data_len) {
+    //     //     return Err(TokenError::NotRentExempt.into());
+    //     // }
+
+    //     let signer_infos = account_info_iter.as_slice();
+    //     multisig.m = m;
+    //     multisig.n = signer_infos.len() as u8;
+
+    //     if !is_valid_signer_index(multisig.n as usize) {
+    //         return Err(TokenError::InvalidNumberOfProvidedSigners.into());
+    //     }
+    //     if !is_valid_signer_index(multisig.m as usize) {
+    //         return Err(TokenError::InvalidNumberOfRequiredSigners.into());
+    //     }
+    //     for (i, signer_info) in signer_infos.iter().enumerate() {
+    //         multisig.signers[i] = *signer_info.key;
+    //     }
+
+    //     // multisig.is_initialized = true;
+    //     // Multisig::pack(multisig, &mut multisig_info.data.borrow_mut())?;
+
+    //     Ok(())
+    // }
+
+    pub fn process_update_consuls(
         accounts: &[AccountInfo],
         new_consuls: &[Pubkey],
         current_round: u64,
@@ -117,11 +179,6 @@ impl Processor {
         }
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
-        // let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
-
-        // if !rent.is_exempt(gravity_contract_account.lamports(), gravity_contract_account.data_len()) {
-        //     return Err(GravityError::NotRentExempt.into());
-        // }
 
         let mut gravity_contract_info =
             GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
@@ -129,21 +186,6 @@ impl Processor {
             return Err(ProgramError::UninitializedAccount);
         }
 
-        msg!("current round: {:}\n", gravity_contract_info.last_round);
-
-        msg!("iterating current consuls \n");
-        for (i, consul) in gravity_contract_info.consuls.iter().enumerate() {
-            msg!("current consul #{:} is \n", i);
-            consul.log();
-        }
-
-        msg!("input round: {:}\n", current_round);
-
-        msg!("iterating input consuls \n");
-        for (i, consul) in new_consuls.iter().enumerate() {
-            msg!("input consul #{:} is \n", i);
-            consul.log();
-        }
 
         Ok(())
     }
