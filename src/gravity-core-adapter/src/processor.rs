@@ -16,7 +16,7 @@ use spl_token::{
     instruction::is_valid_signer_index,
 
     // processor::Processor::process_initialize_multisig,
-    processor::Processor::validate_owner,
+    processor::Processor as TokenProcessor,
     state::Multisig,
 };
 
@@ -29,7 +29,6 @@ pub struct Processor;
 impl Processor {
     pub fn process(
         program_id: &Pubkey,
-        mutlisig_program_id: &Pubkey,
         accounts: &[AccountInfo],
         instruction_data: &[u8],
     ) -> ProgramResult {
@@ -50,19 +49,20 @@ impl Processor {
                     bft,
                     program_id,
                 )
-            }
-            GravityContractInstruction::UpdateConsuls {
-                new_consuls,
-                current_round,
-            } => {
-                msg!("Instruction: Update Consuls");
-                Self::process_update_consuls(
-                    accounts,
-                    new_consuls.as_slice(),
-                    current_round,
-                    program_id,
-                )
-            }
+            },
+            _ => Err(GravityError::InvalidInstruction.into())
+            // GravityContractInstruction::UpdateConsuls {
+            //     new_consuls,
+            //     current_round,
+            // } => {
+            //     msg!("Instruction: Update Consuls");
+            //     Self::process_update_consuls(
+            //         accounts,
+            //         new_consuls.as_slice(),
+            //         current_round,
+            //         program_id,
+            //     )
+            // }
         }
     }
 
@@ -150,7 +150,7 @@ impl Processor {
 
     pub fn process_update_consuls(
         accounts: &[AccountInfo],
-        new_consuls: &[Pubkey],
+        new_consuls: &[AccountInfo],
         current_round: u64,
         program_id: &Pubkey,
     ) -> ProgramResult {
@@ -172,13 +172,13 @@ impl Processor {
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        validate_owner(
+        TokenProcessor::validate_owner(
             program_id, 
             &gravity_contract_multisig_account.key, 
             &gravity_contract_multisig_account,
-            new_consuls
+            &new_consuls.to_vec()
         )?;
-        
+
         Ok(())
     }
 }
