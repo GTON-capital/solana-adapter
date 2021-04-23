@@ -102,18 +102,13 @@ impl Processor {
 
         GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
 
-        let multisig_signers: Vec<&Pubkey> = new_consuls
-            .to_vec()
-            .iter()
-            .collect();
+        // msg!("picking multisig account");
+        // let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        msg!("picking multisig account");
-        let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
+        // msg!("initializing multisig program");
+        // Self::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
 
-        msg!("initializing multisig program");
-        Self::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
-
-        msg!("initialized multisig program!");
+        // msg!("initialized multisig program!");
 
         Ok(())
     }
