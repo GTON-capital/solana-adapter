@@ -71,7 +71,7 @@ impl Processor {
         new_consuls: &[Pubkey],
         current_round: u64,
         bft: u8,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -102,13 +102,13 @@ impl Processor {
 
         GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
 
-        // msg!("picking multisig account");
-        // let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
+        msg!("picking multisig account");
+        let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        // msg!("initializing multisig program");
-        // Self::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
+        msg!("initializing multisig program");
+        Self::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
 
-        // msg!("initialized multisig program!");
+        msg!("initialized multisig program!");
 
         Ok(())
     }
