@@ -115,15 +115,15 @@ impl Processor {
 
     pub fn process_init_multisig(multisig_account: &AccountInfo, signer_pubkeys: &[Pubkey], minumum_bft: u8) -> ProgramResult {
         let mut multisig = Multisig::unpack_unchecked(&multisig_account.try_borrow_data()?)?;
-        let multisig_account_len = multisig_account.data_len();
-        let multisig_account_rent = &Rent::from_account_info(multisig_account)?;
+        // let multisig_account_len = multisig_account.try_borrow_data()?.len();
+        // let multisig_account_rent = &Rent::from_account_info(multisig_account)?;
 
         if multisig.is_initialized {
             return Err(TokenError::AlreadyInUse.into());
         }
-        if !multisig_account_rent.is_exempt(multisig_account.lamports(), multisig_account_len) {
-            return Err(TokenError::NotRentExempt.into());
-        }
+        // if !multisig_account_rent.is_exempt(multisig_account.lamports(), multisig_account_len) {
+        //     return Err(TokenError::NotRentExempt.into());
+        // }
 
         multisig.m = minumum_bft;
         multisig.n = signer_pubkeys.len() as u8;
