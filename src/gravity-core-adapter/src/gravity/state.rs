@@ -57,7 +57,7 @@ impl Sealed for GravityContract {}
 
 impl IsInitialized for GravityContract {
     fn is_initialized(&self) -> bool {
-        true
+        self.is_initialized
     }
 }
 
@@ -69,11 +69,6 @@ impl Pack for GravityContract {
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
             array_refs![src, 1, 32, 1, 32 * 3, 8];
         let is_initialized = is_initialized[0] != 0;
-        // match is_initialized {
-        //     [0] => false,
-        //     [1] => true,
-        //     _ => return Err(ProgramError::InvalidAccountData),
-        // };
 
         Ok(GravityContract {
             is_initialized,
