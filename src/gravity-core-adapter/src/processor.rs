@@ -2,11 +2,9 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    sysvar::{rent::Rent, Sysvar},
 };
 
 use spl_token::{
@@ -16,7 +14,7 @@ use spl_token::{
     instruction::is_valid_signer_index,
 
     // processor::Processor::process_initialize_multisig,
-    processor::Processor as TokenProcessor,
+    // processor::Processor as TokenProcessor,
     state::Multisig,
 };
 
@@ -50,19 +48,17 @@ impl Processor {
                     program_id,
                 )
             },
-            _ => Err(GravityError::InvalidInstruction.into())
-            // GravityContractInstruction::UpdateConsuls {
-            //     new_consuls,
-            //     current_round,
-            // } => {
-            //     msg!("Instruction: Update Consuls");
-            //     Self::process_update_consuls(
-            //         accounts,
-            //         new_consuls.as_slice(),
-            //         current_round,
-            //         program_id,
-            //     )
-            // }
+            GravityContractInstruction::UpdateConsuls {
+                current_round,
+            } => {
+                msg!("Instruction: Update Consuls");
+                Self::process_update_consuls(
+                    accounts,
+                    current_round,
+                    program_id,
+                )
+            }
+            // _ => Err(GravityError::InvalidInstruction.into())
         }
     }
 
@@ -121,9 +117,7 @@ impl Processor {
         if multisig.is_initialized {
             return Err(TokenError::AlreadyInUse.into());
         }
-        // if !multisig_account_rent.is_exempt(multisig_account.lamports(), multisig_account_len) {
-        //     return Err(TokenError::NotRentExempt.into());
-        // }
+
 
         multisig.m = minumum_bft;
         multisig.n = signer_pubkeys.len() as u8;
@@ -145,7 +139,6 @@ impl Processor {
 
     pub fn process_update_consuls(
         accounts: &[AccountInfo],
-        new_consuls: &[AccountInfo],
         current_round: u64,
         program_id: &Pubkey,
     ) -> ProgramResult {
@@ -158,8 +151,8 @@ impl Processor {
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
-        let mut gravity_contract_info =
-            GravityContract::unpack(&gravity_contract_account.data.borrow()[0..138])?;
+        let gravity_contract_info =
+            GravityContract::unpack(&gravity_contract_account.try_borrow_data()?[0..138])?;
         if !gravity_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
         }
@@ -167,13 +160,59 @@ impl Processor {
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        TokenProcessor::validate_owner(
+        let new_consuls = &accounts[3..];
+
+        match Self::validate_owner(
             program_id, 
             &gravity_contract_multisig_account.key, 
             &gravity_contract_multisig_account,
-            &new_consuls.to_vec()
-        )?;
+            &new_consuls.to_vec(),
+        ) {
+            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            _ => {}
+        };
 
+        if current_round <= gravity_contract_info.last_round {
+            return Err(GravityError::InputRoundMismatch.into())
+        }
+
+        Ok(())
+    }
+
+    const MAX_SIGNERS: usize = 11;
+    fn validate_owner(
+        program_id: &Pubkey,
+        expected_owner: &Pubkey,
+        owner_account_info: &AccountInfo,
+        signers: &[AccountInfo],
+    ) -> ProgramResult {
+        if expected_owner != owner_account_info.key {
+            return Err(TokenError::OwnerMismatch.into());
+        }
+        if program_id == owner_account_info.owner
+            && owner_account_info.data_len() == Multisig::get_packed_len()
+        {
+            let multisig = Multisig::unpack(&owner_account_info.try_borrow_data()?)?;
+            let mut num_signers = 0;
+            let mut matched = [false; Self::MAX_SIGNERS];
+            for signer in signers.iter() {
+                for (position, key) in multisig.signers[0..multisig.n as usize].iter().enumerate() {
+                    if key == signer.key && !matched[position] {
+                        if !signer.is_signer {
+                            return Err(ProgramError::MissingRequiredSignature);
+                        }
+                        matched[position] = true;
+                        num_signers += 1;
+                    }
+                }
+            }
+            if num_signers < multisig.m {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+            return Ok(());
+        } else if !owner_account_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
         Ok(())
     }
 }

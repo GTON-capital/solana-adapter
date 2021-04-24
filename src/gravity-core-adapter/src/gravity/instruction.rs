@@ -1,6 +1,7 @@
 
 use solana_program::{
     msg,
+    account_info::AccountInfo,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -42,7 +43,7 @@ pub enum GravityContractInstruction {
         bft: u8,
     },
     UpdateConsuls {
-        new_consuls: Vec<Pubkey>,
+        // new_consuls: Vec<Pubkey>,
         current_round: u64,
     },
 }
@@ -76,12 +77,8 @@ impl<'a> GravityContractInstruction {
                 }
             }
             1 => {
-                let mut new_consuls = vec![];
-                Self::unpack_consuls(rest, &mut new_consuls)?;
-
                 Self::UpdateConsuls {
                     current_round: Self::unpack_round(3, rest)?,
-                    new_consuls: new_consuls,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

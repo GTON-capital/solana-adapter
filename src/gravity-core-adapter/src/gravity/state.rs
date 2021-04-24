@@ -1,7 +1,6 @@
 use std::fmt;
 
 use solana_program::{
-    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
