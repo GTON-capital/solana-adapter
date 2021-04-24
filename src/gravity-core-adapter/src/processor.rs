@@ -79,6 +79,12 @@ impl Processor {
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
+        for byte in gravity_contract_account.try_borrow_data()?.iter() {
+            if *byte != 0 {
+                return Err(ProgramError::AccountAlreadyInitialized)
+            }        
+        }
+
         let mut gravity_contract_info = GravityContract::default();
 
         gravity_contract_info.is_initialized = true;
