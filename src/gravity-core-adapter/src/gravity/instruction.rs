@@ -1,6 +1,19 @@
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
+
+use solana_program::{
+    msg,
+    account_info::AccountInfo,
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack, Sealed},
+    pubkey::Pubkey,
+};
+use spl_token::state::Multisig;
 use std::convert::TryInto;
 use std::slice::SliceIndex;
+
+use crate::gravity::state::GravityContract;
+
+
+
 
 // use hex;
 // use crate::state::misc::WrappedResult;
@@ -30,7 +43,7 @@ pub enum GravityContractInstruction {
         bft: u8,
     },
     UpdateConsuls {
-        new_consuls: Vec<Pubkey>,
+        // new_consuls: Vec<Pubkey>,
         current_round: u64,
     },
 }
@@ -64,12 +77,8 @@ impl<'a> GravityContractInstruction {
                 }
             }
             1 => {
-                let mut new_consuls = vec![];
-                Self::unpack_consuls(rest, &mut new_consuls)?;
-
                 Self::UpdateConsuls {
                     current_round: Self::unpack_round(3, rest)?,
-                    new_consuls: new_consuls,
                 }
             }
             _ => return Err(InvalidInstruction.into()),
@@ -127,10 +136,10 @@ mod tests {
 
     #[test]
     fn test_raw_input() -> WrappedResult<()> {
-        let raw_tx_input = "0003f872d107a7b14923cde74b1bd4db800bd1c8e760eeaacd4b62d91e8074f2f66b3be181103d34cbcc048bf08c4764880f01b77454d4f69f022f9befeb0de95ac148a3e124c22a138ec3037538cd72201fc4bfa92cdcb709f9c4218fe24eae41870000000000000000";
+        let raw_tx_input = "01000104bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c853b243370dff1af837da92b91fc34b6b25bc35c011fdc1061512a3a01ea324b064c9643f8e3c1418302a94791b588dfe9e50b6f31d13c605078c9a4497d0a3f7cbe8f3dc36da246f1c085fd38b1591451bde88f5681ad8418bc6098ae2852d8da46fff7293cd539558e9376ac765b5b2bc28f920eaba32f29550d22d6ee919f410103030001026a0003bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c85a3b6d771e642ec6b7997c6013f6a822451f70064db491878fd05c27af94d49f598a4b405cd647c215e128e4bca5d736d3a09a82583e6981ed1cb4837a41f1b6c0000000000000000";
 
         let serialized_gravity_contract_bytes = hex::decode(raw_tx_input)?;
-        println!("{:?}", serialized_gravity_contract_bytes);
+        println!("{:?}", GravityContract::unpack(&serialized_gravity_contract_bytes[1..139])?);
 
         GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())
             .expect("deser failed!");
