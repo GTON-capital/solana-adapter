@@ -13,8 +13,6 @@ use std::slice::SliceIndex;
 use crate::gravity::state::GravityContract;
 
 
-
-
 // use hex;
 // use crate::state::misc::WrappedResult;
 use crate::error::GravityError::InvalidInstruction;
@@ -43,7 +41,7 @@ pub enum GravityContractInstruction {
         bft: u8,
     },
     UpdateConsuls {
-        // new_consuls: Vec<Pubkey>,
+        new_consuls: Vec<Pubkey>,
         current_round: u64,
     },
 }
@@ -77,7 +75,12 @@ impl<'a> GravityContractInstruction {
                 }
             }
             1 => {
+                let mut new_consuls = vec![];
+                Self::unpack_consuls(rest, &mut new_consuls)?;
+                println!("consuls: {:?}", new_consuls);
+
                 Self::UpdateConsuls {
+                    new_consuls: new_consuls,
                     current_round: Self::unpack_round(3, rest)?,
                 }
             }

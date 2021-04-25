@@ -50,11 +50,13 @@ impl Processor {
             },
             GravityContractInstruction::UpdateConsuls {
                 current_round,
+                new_consuls
             } => {
                 msg!("Instruction: Update Consuls");
                 Self::process_update_consuls(
                     accounts,
                     current_round,
+                    new_consuls.as_slice(),
                     program_id,
                 )
             }
@@ -146,6 +148,7 @@ impl Processor {
     pub fn process_update_consuls(
         accounts: &[AccountInfo],
         current_round: u64,
+        new_consuls: &[Pubkey],
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -157,7 +160,7 @@ impl Processor {
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
-        let gravity_contract_info =
+        let mut gravity_contract_info =
             GravityContract::unpack(&gravity_contract_account.try_borrow_data()?[0..138])?;
         if !gravity_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
@@ -166,13 +169,13 @@ impl Processor {
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        let new_consuls = &accounts[3..];
+        let current_multisig_owners = &accounts[3..];
 
         match Self::validate_owner(
             program_id, 
             &gravity_contract_multisig_account.key, 
             &gravity_contract_multisig_account,
-            &new_consuls.to_vec(),
+            &current_multisig_owners.to_vec(),
         ) {
             Err(_) => return Err(GravityError::InvalidBFTCount.into()),
             _ => {}
@@ -181,6 +184,11 @@ impl Processor {
         if current_round <= gravity_contract_info.last_round {
             return Err(GravityError::InputRoundMismatch.into())
         }
+
+        gravity_contract_info.last_round = current_round;
+        gravity_contract_info.consuls = new_consuls.to_vec();
+
+        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
 
         Ok(())
     }
