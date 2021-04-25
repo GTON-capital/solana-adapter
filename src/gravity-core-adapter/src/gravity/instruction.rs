@@ -17,22 +17,6 @@ use crate::gravity::state::GravityContract;
 // use crate::state::misc::WrappedResult;
 use crate::error::GravityError::InvalidInstruction;
 
-mod utils {
-    use super::*;
-
-    pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -> U>(
-        input: &'a [u8],
-        index: std::ops::Range<usize>,
-        f: F,
-    ) -> Result<U, ProgramError> {
-        let res = input
-            .get(index)
-            .and_then(|slice| slice.try_into().ok())
-            .map(f)
-            .ok_or(InvalidInstruction)?;
-        Ok(res)
-    }
-}
 
 pub enum GravityContractInstruction {
     InitContract {
@@ -139,13 +123,13 @@ mod tests {
 
     #[test]
     fn test_raw_input() -> WrappedResult<()> {
-        let raw_tx_input = "01000104bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c853b243370dff1af837da92b91fc34b6b25bc35c011fdc1061512a3a01ea324b064c9643f8e3c1418302a94791b588dfe9e50b6f31d13c605078c9a4497d0a3f7cbe8f3dc36da246f1c085fd38b1591451bde88f5681ad8418bc6098ae2852d8da46fff7293cd539558e9376ac765b5b2bc28f920eaba32f29550d22d6ee919f410103030001026a0003bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c85a3b6d771e642ec6b7997c6013f6a822451f70064db491878fd05c27af94d49f598a4b405cd647c215e128e4bca5d736d3a09a82583e6981ed1cb4837a41f1b6c0000000000000000";
+        // let raw_tx_input = "01000104bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c853b243370dff1af837da92b91fc34b6b25bc35c011fdc1061512a3a01ea324b064c9643f8e3c1418302a94791b588dfe9e50b6f31d13c605078c9a4497d0a3f7cbe8f3dc36da246f1c085fd38b1591451bde88f5681ad8418bc6098ae2852d8da46fff7293cd539558e9376ac765b5b2bc28f920eaba32f29550d22d6ee919f410103030001026a0003bfb92919a3a0f16abc73951e82c05592732e5514ffa5cdae5f77a96d04922c85a3b6d771e642ec6b7997c6013f6a822451f70064db491878fd05c27af94d49f598a4b405cd647c215e128e4bca5d736d3a09a82583e6981ed1cb4837a41f1b6c0000000000000000";
 
-        let serialized_gravity_contract_bytes = hex::decode(raw_tx_input)?;
-        println!("{:?}", GravityContract::unpack(&serialized_gravity_contract_bytes[1..139])?);
+        // let serialized_gravity_contract_bytes = hex::decode(raw_tx_input)?;
+        // println!("{:?}", GravityContract::unpack(&serialized_gravity_contract_bytes[1..139])?);
 
-        GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())
-            .expect("deser failed!");
+        // GravityContractInstruction::unpack(serialized_gravity_contract_bytes.as_slice())
+        //     .expect("deser failed!");
 
         Ok(())
     }

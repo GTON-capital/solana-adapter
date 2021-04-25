@@ -20,9 +20,9 @@ pub enum GravityError {
 
 #[derive(Error, Debug, Copy, Clone)]
 pub enum NebulaError {
-    /// Failed to attach data
-    #[error("Failed to attach data")]
-    AttachDataFailed
+    /// Failed to send value to subs
+    #[error("Failed to send value to subs")]
+    SendValueToSubsFailed
 }
 
 impl From<GravityError> for ProgramError {
