@@ -8,14 +8,6 @@ use solana_program::{
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
-// trait AbstractGravityContract {
-//     type Consul;
-
-//     fn get_consuls() -> Self::Consul;
-//     fn update_consuls(&self);
-//     fn hash_new_consuls(&self);
-// }
-
 #[derive(PartialEq, PartialOrd, Default, Debug, Clone)]
 pub struct GravityContract {
     pub is_initialized: bool,

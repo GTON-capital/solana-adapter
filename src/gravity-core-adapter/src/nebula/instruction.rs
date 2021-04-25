@@ -123,57 +123,74 @@ impl<'a> NebulaContractInstruction<'a> {
     const BFT_ALLOC: usize = 1;
     const DATA_TYPE_ALLOC_RANGE: usize = 1;
     const PUBKEY_ALLOC: usize = 32;
-    const LAST_ROUND_ALLOC: usize = 8;
+    const ROUND_ALLOC: usize = 8;
 
     // pub fn match_instruction_byte_order(instruction: Self)
-
-
 
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
             0 => {
-                let bft = extract_from_range(rest, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?;
+                let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?;
                 let allocs = vec![
                     Self::BFT_ALLOC,
                     Self::DATA_TYPE_ALLOC_RANGE,
                     Self::PUBKEY_ALLOC,
-                    Self::PUBKEY_ALLOC * bft as usize,
+                    Self::PUBKEY_ALLOC * oracles_bft as usize,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
-                let data_type = DataType::cast_from(
+                let nebula_data_type = DataType::cast_from(
                     extract_from_range(rest, ranges[1].clone(), |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?
                 );
-                let gravity_contract_program_id = extract_from_range(rest, ranges[2].clone(), |x| { Pubkey::new(x) })?;
-                let initial_oracles = extract_from_range(rest, ranges[3].clone(), |x: &[u8]| {
-                    let consuls = array_ref![x, 32 * bft as usize, 8];
 
-                    vec![
-                        Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
-                        Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
-                        Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
-                    ]
-                })?;
+                let gravity_contract_program_id = extract_from_range(rest, ranges[2].clone(), |x| { Pubkey::new(x) })?;
+                let initial_oracles = Self::retrieve_oracles(rest, ranges[3].clone(), oracles_bft)?;
 
                 Self::InitContract {
-                    nebula_data_type: data_type,
-                    gravity_contract_program_id: gravity_contract_program_id,
-                    initial_oracles: initial_oracles,
-                    oracles_bft: bft
+                    nebula_data_type,
+                    gravity_contract_program_id,
+                    initial_oracles,
+                    oracles_bft
                 }
             }
-            // 1 => {
-            //     let mut new_consuls = vec![];
-            //     Self::unpack_consuls(rest, &mut new_consuls)?;
-            //     println!("consuls: {:?}", new_consuls);
+            1 => {
+                let bft = extract_from_range(rest, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?;
+                let allocs = vec![
+                    Self::BFT_ALLOC,
+                    Self::PUBKEY_ALLOC * bft as usize,
+                    Self::ROUND_ALLOC
+                ];
+                let ranges = build_range_from_alloc(&allocs);
 
-            //     Self::UpdateConsuls {
-            //         new_consuls: new_consuls,
-            //         current_round: Self::unpack_round(3, rest)?,
-            //     }
-            // }
+                let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
+                let new_round = extract_from_range(
+                    rest,
+                    ranges[2].clone(),
+                    |x: &[u8]| { u64::from_le_bytes(*array_ref![x, 0, 8]) })?;
+
+                Self::UpdateOracles {
+                    new_oracles,
+                    new_round
+                }
+            }
             _ => return Err(InvalidInstruction.into()),
+        })
+    }
+
+    fn retrieve_oracles(bytes: &[u8], range: std::ops::Range<usize>, bft: u8) -> Result<Vec<Pubkey>, ProgramError> {
+        extract_from_range(bytes, range, |x: &[u8]| {
+            let consuls = array_ref![x, 32 * bft as usize, 8];
+            let mut result = vec![];
+
+            for i in 0..bft {
+                let i = i as usize;
+                result.push(
+                    Pubkey::new_from_array(*array_ref![consuls[i * 32..(i + 1) * 32], 0, 32])
+                );
+            }
+
+            result
         })
     }
 
@@ -183,31 +200,6 @@ impl<'a> NebulaContractInstruction<'a> {
     //         .and_then(|slice| slice.try_into().ok())
     //         .map(u8::from_le_bytes)
     //         .ok_or(InvalidInstruction)?)
-    // }
-
-    // fn unpack_oracles(input: &'a [u8], dst: &mut Vec<Pubkey>) -> Result<(), ProgramError> {
-    //     let bft: u8 = Self::unpack_bft(input)?;
-
-    //     let range_start = Self::BFT_ALLOC;
-    //     let range_end = range_start + 32 * bft as usize;
-    //     let consuls_slice = input
-    //         .get(range_start..range_end)
-    //         .ok_or(InvalidInstruction)?;
-
-    //     // assert!(consuls_slice.len() == 3 * 32);
-
-    //     let address_alloc: usize = 32;
-
-    //     for i in 0..bft as usize {
-    //         let pubky = Pubkey::new(
-    //             consuls_slice
-    //                 .get(i * address_alloc..(i + 1) * address_alloc)
-    //                 .ok_or(InvalidInstruction)?,
-    //         );
-    //         dst.push(pubky);
-    //     }
-
-    //     Ok(())
     // }
 
     // /// Round is considered as first argument and as u256 data type

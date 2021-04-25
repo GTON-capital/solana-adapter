@@ -2343,6 +2343,7 @@ dependencies = [
  "byteorder",
  "hex",
  "rand 0.8.3",
+ "sha2 0.9.3",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
