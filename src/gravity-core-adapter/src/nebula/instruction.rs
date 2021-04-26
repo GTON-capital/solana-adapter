@@ -1,28 +1,27 @@
-
 use solana_program::{
-    msg,
     account_info::AccountInfo,
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
 use spl_token::state::Multisig;
 use std::convert::TryInto;
-use std::slice::SliceIndex;
 use std::ops::Range;
+use std::slice::SliceIndex;
 
 use arrayref::{array_ref, array_refs};
 // use hex;
 
 use crate::gravity::misc::extract_from_range;
-use crate::nebula::state::DataType;
 use crate::gravity::state::GravityContract;
+use crate::nebula::state::DataType;
 
-
+use crate::nebula::state::PulseID;
 
 // use hex;
 // use crate::state::misc::WrappedResult;
-use crate::error::GravityError::InvalidInstruction;
+use crate::gravity::error::GravityError::InvalidInstruction;
 
 mod utils {
     use super::*;
@@ -46,20 +45,20 @@ pub enum NebulaContractInstruction<'a> {
         nebula_data_type: DataType,
         gravity_contract_program_id: Pubkey,
         initial_oracles: Vec<Pubkey>,
-        oracles_bft: u8
+        oracles_bft: u8,
     },
     UpdateOracles {
         new_oracles: Vec<Pubkey>,
-        new_round: u64,
+        new_round: PulseID,
     },
     SendHashValue {
-        data_hash: &'a [u8]
+        data_hash: &'a [u8],
     },
     SendValueToSubs {
         data_type: DataType,
-        pulse_id: u64,
-        subscription_id: &'a [u8]
-    }
+        pulse_id: PulseID,
+        subscription_id: &'a [u8],
+    },
 }
 
 fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
@@ -76,7 +75,7 @@ fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
             res.push(alloc);
             start_index = current;
             i += 1;
-            continue
+            continue;
         }
 
         let alloc = start_index..start_index + current;
@@ -95,12 +94,7 @@ mod tests {
 
     #[test]
     fn test_build_from_range_alloc() {
-        let allocs = vec![
-            1,
-            1,
-            32 * 3,
-            8
-        ];
+        let allocs = vec![1, 1, 32 * 3, 8];
 
         let ranges = build_range_from_alloc(&allocs);
 
@@ -115,7 +109,9 @@ mod tests {
     fn test_bft_extraction() {
         let input: [u8; 1] = u8::to_le_bytes(3);
 
-        let extracted = extract_from_range(&input, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) });
+        let extracted = extract_from_range(&input, 0..1, |x: &[u8]| {
+            u8::from_le_bytes(*array_ref![x, 0, 1])
+        });
     }
 }
 
@@ -132,7 +128,9 @@ impl<'a> NebulaContractInstruction<'a> {
 
         Ok(match tag {
             0 => {
-                let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?;
+                let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
                 let allocs = vec![
                     Self::BFT_ALLOC,
                     Self::DATA_TYPE_ALLOC_RANGE,
@@ -140,75 +138,68 @@ impl<'a> NebulaContractInstruction<'a> {
                     Self::PUBKEY_ALLOC * oracles_bft as usize,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
-                let nebula_data_type = DataType::cast_from(
-                    extract_from_range(rest, ranges[1].clone(), |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?
-                );
+                let nebula_data_type = DataType::cast_from(extract_from_range(
+                    rest,
+                    ranges[1].clone(),
+                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
+                )?);
 
-                let gravity_contract_program_id = extract_from_range(rest, ranges[2].clone(), |x| { Pubkey::new(x) })?;
+                let gravity_contract_program_id =
+                    extract_from_range(rest, ranges[2].clone(), |x| Pubkey::new(x))?;
                 let initial_oracles = Self::retrieve_oracles(rest, ranges[3].clone(), oracles_bft)?;
 
                 Self::InitContract {
                     nebula_data_type,
                     gravity_contract_program_id,
                     initial_oracles,
-                    oracles_bft
+                    oracles_bft,
                 }
             }
             1 => {
-                let bft = extract_from_range(rest, 0..1, |x: &[u8]| { u8::from_le_bytes(*array_ref![x, 0, 1]) })?;
+                let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
                 let allocs = vec![
                     Self::BFT_ALLOC,
                     Self::PUBKEY_ALLOC * bft as usize,
-                    Self::ROUND_ALLOC
+                    Self::ROUND_ALLOC,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
 
                 let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
-                let new_round = extract_from_range(
-                    rest,
-                    ranges[2].clone(),
-                    |x: &[u8]| { u64::from_le_bytes(*array_ref![x, 0, 8]) })?;
+                let new_round = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
+                    PulseID::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
 
                 Self::UpdateOracles {
                     new_oracles,
-                    new_round
+                    new_round,
                 }
             }
             _ => return Err(InvalidInstruction.into()),
         })
     }
 
-    fn retrieve_oracles(bytes: &[u8], range: std::ops::Range<usize>, bft: u8) -> Result<Vec<Pubkey>, ProgramError> {
+    fn retrieve_oracles(
+        bytes: &[u8],
+        range: std::ops::Range<usize>,
+        bft: u8,
+    ) -> Result<Vec<Pubkey>, ProgramError> {
         extract_from_range(bytes, range, |x: &[u8]| {
             let consuls = array_ref![x, 32 * bft as usize, 8];
             let mut result = vec![];
 
             for i in 0..bft {
                 let i = i as usize;
-                result.push(
-                    Pubkey::new_from_array(*array_ref![consuls[i * 32..(i + 1) * 32], 0, 32])
-                );
+                result.push(Pubkey::new_from_array(*array_ref![
+                    consuls[i * 32..(i + 1) * 32],
+                    0,
+                    32
+                ]));
             }
 
             result
         })
     }
 
-    // fn unpack_bft(input: &'a [u8]) -> Result<u8, ProgramError> {
-    //     Ok(input
-    //         .get(Self::BFT_RANGE)
-    //         .and_then(|slice| slice.try_into().ok())
-    //         .map(u8::from_le_bytes)
-    //         .ok_or(InvalidInstruction)?)
-    // }
-
-    // /// Round is considered as first argument and as u256 data type
-    // fn unpack_round(bft: u8, input: &[u8]) -> Result<u64, ProgramError> {
-    //     let start_offset = Self::BFT_ALLOC + (Self::PUBKEY_ALLOC * bft as usize);
-    //     Ok(input
-    //         .get(start_offset..start_offset + Self::LAST_ROUND_ALLOC)
-    //         .and_then(|slice| slice.try_into().ok())
-    //         .map(u64::from_le_bytes)
-    //         .ok_or(InvalidInstruction)?)
-    // }
 }

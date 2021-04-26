@@ -1,7 +1,6 @@
-
 use solana_program::{
-    msg,
     account_info::AccountInfo,
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -12,11 +11,9 @@ use std::slice::SliceIndex;
 
 use crate::gravity::state::GravityContract;
 
-
 // use hex;
 // use crate::state::misc::WrappedResult;
-use crate::error::GravityError::InvalidInstruction;
-
+use crate::gravity::error::GravityError::InvalidInstruction;
 
 pub enum GravityContractInstruction {
     InitContract {

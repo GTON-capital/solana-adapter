@@ -16,6 +16,8 @@ pub struct GravityContract {
     pub bft: u8,
     pub consuls: Vec<Pubkey>,
     pub last_round: u64,
+
+    // pub multisig_program_id: Pubkey
 }
 
 impl fmt::Display for GravityContract {
@@ -36,7 +38,7 @@ pub trait PartialStorage {
     const DATA_RANGE: std::ops::Range<usize>;
 
     fn store_at<'a>(raw_data: &'a [u8]) -> &'a [u8] {
-        return &raw_data[Self::DATA_RANGE]
+        return &raw_data[Self::DATA_RANGE];
     }
 }
 
@@ -54,7 +56,7 @@ impl IsInitialized for GravityContract {
 
 impl Pack for GravityContract {
     const LEN: usize = 138;
-    
+
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
@@ -102,7 +104,6 @@ impl Pack for GravityContract {
         *last_round_dst = last_round.to_le_bytes();
     }
 }
-
 
 #[cfg(test)]
 mod tests {
