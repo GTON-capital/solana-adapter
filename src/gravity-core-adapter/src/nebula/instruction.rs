@@ -201,5 +201,4 @@ impl<'a> NebulaContractInstruction<'a> {
             result
         })
     }
-
 }

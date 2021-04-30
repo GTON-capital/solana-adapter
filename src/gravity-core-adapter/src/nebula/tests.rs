@@ -2,8 +2,6 @@
 #![cfg(feature = "test-bpf")]
 
 use {
-    crate::entrypoint::process_instruction,
-    crate::processor::Processor,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
@@ -12,24 +10,17 @@ use {
     },
     solana_program_test::*,
     solana_sdk::{account::Account, signature::Signer, transaction::Transaction},
-    // gravity_core_adapter::gravity::state::SIZE,
+    spl_example_cross_program_invocation::processor::{process_instruction, SIZE},
     std::str::FromStr,
 };
 
-const SIZE: usize = 2000;
-
 #[tokio::test]
-async fn test_gravity_contract_instantiation() {
+async fn test_cross_program_invocation() {
     let program_id = Pubkey::from_str(&"invoker111111111111111111111111111111111111").unwrap();
-
-    // let process_instruction = &Processor::process_gravity_contract;
-
-    let mocked_seed = "just a seed";
     let (allocated_pubkey, bump_seed) =
-        Pubkey::find_program_address(&[mocked_seed.as_bytes()], &program_id);
-
+        Pubkey::find_program_address(&[b"You pass butter"], &program_id);
     let mut program_test = ProgramTest::new(
-        "gravity_core_adapter",
+        "spl_example_cross_program_invocation",
         program_id,
         processor!(process_instruction),
     );

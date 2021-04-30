@@ -16,7 +16,6 @@ pub struct GravityContract {
     pub bft: u8,
     pub consuls: Vec<Pubkey>,
     pub last_round: u64,
-
     // pub multisig_program_id: Pubkey
 }
 

@@ -9,8 +9,8 @@ use solana_program::{
 
 use crate::gravity::state::PartialStorage;
 
-use serde::{Serialize, Deserialize};
 use bincode;
+use serde::{Deserialize, Serialize};
 
 // extern crate sha2;
 // use sha2::Sha256;
@@ -88,9 +88,8 @@ pub struct NebulaContract {
     is_pulse_sent: HashMap<PulseID, HashMap<SubscriptionID, bool>>,
 
     pub is_initialized: bool,
-    pub initializer_pubkey: Pubkey
+    pub initializer_pubkey: Pubkey,
 }
-
 
 impl PartialStorage for NebulaContract {
     const DATA_RANGE: std::ops::Range<usize> = 0..2000;
@@ -107,7 +106,7 @@ impl IsInitialized for NebulaContract {
 impl Pack for NebulaContract {
     const LEN: usize = 2000;
 
-    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {    
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         bincode::deserialize(&src[..]).unwrap()
     }
 
