@@ -18,6 +18,13 @@ pub enum GravityError {
     InvalidBFTCount,
 }
 
+#[derive(Error, Debug, Copy, Clone)]
+pub enum NebulaError {
+    /// Failed to send value to subs
+    #[error("Failed to send value to subs")]
+    SendValueToSubsFailed,
+}
+
 impl From<GravityError> for ProgramError {
     fn from(e: GravityError) -> Self {
         ProgramError::Custom(e as u32)

@@ -18,13 +18,19 @@ use spl_token::{
     state::Multisig,
 };
 
-use crate::{
-    error::GravityError, gravity::instruction::GravityContractInstruction,
-    gravity::state::GravityContract,
+use crate::gravity::{
+    error::GravityError, instruction::GravityContractInstruction,
+    misc::validate_contract_emptiness, state::GravityContract,
 };
 
-pub struct Processor;
-impl Processor {
+use crate::nebula::{
+    instruction::NebulaContractInstruction,
+    state::{DataType, NebulaContract, PulseID},
+};
+
+pub struct GravityProcessor;
+
+impl GravityProcessor {
     pub fn process(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -38,7 +44,7 @@ impl Processor {
                 current_round,
                 bft,
             } => {
-                msg!("Instruction: Init Consuls");
+                msg!("Instruction: Init Gravity Contract");
 
                 Self::process_init_gravity_contract(
                     accounts,
@@ -47,25 +53,26 @@ impl Processor {
                     bft,
                     program_id,
                 )
-            },
+            }
             GravityContractInstruction::UpdateConsuls {
                 current_round,
+                new_consuls,
             } => {
-                msg!("Instruction: Update Consuls");
+                msg!("Instruction: Update Gravity Consuls");
                 Self::process_update_consuls(
                     accounts,
                     current_round,
+                    new_consuls.as_slice(),
                     program_id,
                 )
-            }
-            // _ => Err(GravityError::InvalidInstruction.into())
+            } // _ => Err(GravityError::InvalidInstruction.into())
         }
     }
 
     fn process_init_gravity_contract(
         accounts: &[AccountInfo],
         new_consuls: &[Pubkey],
-        current_round: u64,
+        current_round: PulseID,
         bft: u8,
         _program_id: &Pubkey,
     ) -> ProgramResult {
@@ -79,11 +86,7 @@ impl Processor {
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
-        for byte in gravity_contract_account.try_borrow_data()?.iter() {
-            if *byte != 0 {
-                return Err(ProgramError::AccountAlreadyInitialized)
-            }        
-        }
+        validate_contract_emptiness(&gravity_contract_account.try_borrow_data()?[..])?;
 
         let mut gravity_contract_info = GravityContract::default();
 
@@ -102,20 +105,82 @@ impl Processor {
         msg!("gravity contract len: {:} \n", GravityContract::LEN);
         msg!("get packet len: {:} \n", GravityContract::get_packed_len());
 
-        GravityContract::pack(gravity_contract_info, &mut gravity_contract_account.try_borrow_mut_data()?[0..138])?;
+        GravityContract::pack(
+            gravity_contract_info,
+            &mut gravity_contract_account.try_borrow_mut_data()?[0..138],
+        )?;
 
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
         msg!("initializing multisig program");
-        Self::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
+        MiscProcessor::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
 
         msg!("initialized multisig program!");
 
         Ok(())
     }
 
-    pub fn process_init_multisig(multisig_account: &AccountInfo, signer_pubkeys: &[Pubkey], minumum_bft: u8) -> ProgramResult {
+    pub fn process_update_consuls(
+        accounts: &[AccountInfo],
+        current_round: u64,
+        new_consuls: &[Pubkey],
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let initializer = next_account_info(account_info_iter)?;
+
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let gravity_contract_account = next_account_info(account_info_iter)?;
+
+        let mut gravity_contract_info =
+            GravityContract::unpack(&gravity_contract_account.try_borrow_data()?[0..138])?;
+        if !gravity_contract_info.is_initialized() {
+            return Err(ProgramError::UninitializedAccount);
+        }
+
+        msg!("picking multisig account");
+        let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
+
+        let current_multisig_owners = &accounts[3..];
+
+        match MiscProcessor::validate_owner(
+            program_id,
+            &gravity_contract_multisig_account.key,
+            &gravity_contract_multisig_account,
+            &current_multisig_owners.to_vec(),
+        ) {
+            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            _ => {}
+        };
+
+        if current_round <= gravity_contract_info.last_round {
+            return Err(GravityError::InputRoundMismatch.into());
+        }
+
+        gravity_contract_info.last_round = current_round;
+        gravity_contract_info.consuls = new_consuls.to_vec();
+
+        GravityContract::pack(
+            gravity_contract_info,
+            &mut gravity_contract_account.try_borrow_mut_data()?[0..138],
+        )?;
+
+        Ok(())
+    }
+}
+
+pub struct MiscProcessor;
+
+impl MiscProcessor {
+    pub fn process_init_multisig(
+        multisig_account: &AccountInfo,
+        signer_pubkeys: &[Pubkey],
+        minumum_bft: u8,
+    ) -> ProgramResult {
         let mut multisig = Multisig::unpack_unchecked(&multisig_account.try_borrow_data()?)?;
         // let multisig_account_len = multisig_account.try_borrow_data()?.len();
         // let multisig_account_rent = &Rent::from_account_info(multisig_account)?;
@@ -123,7 +188,6 @@ impl Processor {
         if multisig.is_initialized {
             return Err(TokenError::AlreadyInUse.into());
         }
-
 
         multisig.m = minumum_bft;
         multisig.n = signer_pubkeys.len() as u8;
@@ -143,50 +207,8 @@ impl Processor {
         Ok(())
     }
 
-    pub fn process_update_consuls(
-        accounts: &[AccountInfo],
-        current_round: u64,
-        program_id: &Pubkey,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let initializer = next_account_info(account_info_iter)?;
-
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let gravity_contract_account = next_account_info(account_info_iter)?;
-
-        let gravity_contract_info =
-            GravityContract::unpack(&gravity_contract_account.try_borrow_data()?[0..138])?;
-        if !gravity_contract_info.is_initialized() {
-            return Err(ProgramError::UninitializedAccount);
-        }
-
-        msg!("picking multisig account");
-        let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
-
-        let new_consuls = &accounts[3..];
-
-        match Self::validate_owner(
-            program_id, 
-            &gravity_contract_multisig_account.key, 
-            &gravity_contract_multisig_account,
-            &new_consuls.to_vec(),
-        ) {
-            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
-            _ => {}
-        };
-
-        if current_round <= gravity_contract_info.last_round {
-            return Err(GravityError::InputRoundMismatch.into())
-        }
-
-        Ok(())
-    }
-
     const MAX_SIGNERS: usize = 11;
-    fn validate_owner(
+    pub fn validate_owner(
         program_id: &Pubkey,
         expected_owner: &Pubkey,
         owner_account_info: &AccountInfo,
