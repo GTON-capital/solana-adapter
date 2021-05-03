@@ -11,9 +11,9 @@ use solana_program::{
 use cfg_if;
 
 use spl_token::{
-    instruction::initialize_multisig,
     // state::Account as TokenAccount
     error::TokenError,
+    instruction::initialize_multisig,
     instruction::is_valid_signer_index,
 
     // processor::Processor::process_initialize_multisig,

@@ -20,11 +20,27 @@ pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -
     Ok(res)
 }
 
-pub fn validate_contract_emptiness(target_contract: &[u8]) -> Result<(), ProgramError> {
+pub fn is_contract_empty(target_contract: &[u8]) -> bool {
     for byte in target_contract.iter() {
         if *byte != 0 {
-            return Err(ProgramError::AccountAlreadyInitialized);
+            return false;
         }
+    }
+
+    return true;
+}
+
+pub fn validate_contract_non_emptiness(target_contract: &[u8]) -> Result<(), ProgramError> {
+    if is_contract_empty(target_contract) {
+        return Err(ProgramError::UninitializedAccount);
+    }
+
+    Ok(())
+}
+
+pub fn validate_contract_emptiness(target_contract: &[u8]) -> Result<(), ProgramError> {
+    if !is_contract_empty(target_contract) {
+        return Err(ProgramError::AccountAlreadyInitialized);
     }
 
     Ok(())

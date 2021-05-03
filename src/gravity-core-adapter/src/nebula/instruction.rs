@@ -10,6 +10,8 @@ use std::convert::TryInto;
 use std::ops::Range;
 use std::slice::SliceIndex;
 
+use uuid::{Builder as UUIDBuilder, Uuid as UUID};
+
 use arrayref::{array_ref, array_refs};
 // use hex;
 
@@ -40,7 +42,7 @@ mod utils {
     }
 }
 
-pub enum NebulaContractInstruction<'a> {
+pub enum NebulaContractInstruction {
     InitContract {
         nebula_data_type: DataType,
         gravity_contract_program_id: Pubkey,
@@ -52,12 +54,12 @@ pub enum NebulaContractInstruction<'a> {
         new_round: PulseID,
     },
     SendHashValue {
-        data_hash: &'a [u8],
+        data_hash: UUID,
     },
     SendValueToSubs {
         data_type: DataType,
         pulse_id: PulseID,
-        subscription_id: &'a [u8],
+        subscription_id: UUID,
     },
 }
 
@@ -115,15 +117,16 @@ mod tests {
     }
 }
 
-impl<'a> NebulaContractInstruction<'a> {
+impl NebulaContractInstruction {
     const BFT_ALLOC: usize = 1;
     const DATA_TYPE_ALLOC_RANGE: usize = 1;
     const PUBKEY_ALLOC: usize = 32;
     const ROUND_ALLOC: usize = 8;
+    const DATA_HASH_ALLOC: usize = 16;
 
     // pub fn match_instruction_byte_order(instruction: Self)
 
-    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
@@ -174,6 +177,44 @@ impl<'a> NebulaContractInstruction<'a> {
                 Self::UpdateOracles {
                     new_oracles,
                     new_round,
+                }
+            }
+            2 => {
+                let allocs = vec![Self::DATA_HASH_ALLOC];
+                let ranges = build_range_from_alloc(&allocs);
+
+                let data_hash = extract_from_range(rest, ranges[0].clone(), |x: &[u8]| {
+                    UUIDBuilder::from_bytes(*array_ref![x, 0, 16])
+                })?
+                .build();
+
+                Self::SendHashValue { data_hash }
+            }
+            3 => {
+                let allocs = vec![
+                    Self::DATA_TYPE_ALLOC_RANGE,
+                    Self::ROUND_ALLOC,
+                    Self::DATA_HASH_ALLOC,
+                ];
+                let ranges = build_range_from_alloc(&allocs);
+
+                let data_type = DataType::cast_from(extract_from_range(
+                    rest,
+                    ranges[0].clone(),
+                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
+                )?);
+                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                    PulseID::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
+                let subscription_id = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
+                    UUIDBuilder::from_bytes(*array_ref![x, 0, 16])
+                })?
+                .build();
+
+                Self::SendValueToSubs {
+                    data_type,
+                    pulse_id: new_round,
+                    subscription_id,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

@@ -19,8 +19,10 @@ use spl_token::{
 };
 
 use crate::gravity::{
-    error::GravityError, instruction::GravityContractInstruction,
-    misc::validate_contract_emptiness, state::GravityContract,
+    error::GravityError,
+    instruction::GravityContractInstruction,
+    misc::{validate_contract_emptiness, validate_contract_non_emptiness},
+    state::GravityContract,
 };
 
 use crate::nebula::{
@@ -107,9 +109,12 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
+        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
+
         if !nebula_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
         }
