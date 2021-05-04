@@ -62,7 +62,7 @@ impl<'a> GravityContractInstruction {
 
                 Self::UpdateConsuls {
                     new_consuls: new_consuls,
-                    current_round: Self::unpack_round(3, rest)?,
+                    current_round: Self::unpack_round(1, rest)?,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

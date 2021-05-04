@@ -59,7 +59,7 @@ impl Pack for GravityContract {
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
-            array_refs![src, 1, 32, 1, 32 * 3, 8];
+            array_refs![src, 1, 32, 1, 32 * 1, 8];
         let is_initialized = is_initialized[0] != 0;
 
         Ok(GravityContract {
@@ -68,8 +68,8 @@ impl Pack for GravityContract {
             bft: u8::from_le_bytes(*bft),
             consuls: vec![
                 Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
-                Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
-                Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
+                // Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
+                // Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
             ],
             last_round: u64::from_le_bytes(*last_round),
         })
@@ -78,7 +78,7 @@ impl Pack for GravityContract {
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let dst = array_mut_ref![dst, 0, GravityContract::LEN];
         let (is_initialized_dst, initializer_pubkey_dst, bft_dst, consuls_dst, last_round_dst) =
-            mut_array_refs![dst, 1, 32, 1, 32 * 3, 8];
+            mut_array_refs![dst, 1, 32, 1, 32 * 1, 8];
 
         let GravityContract {
             is_initialized,
