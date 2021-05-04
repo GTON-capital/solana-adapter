@@ -54,7 +54,7 @@ impl IsInitialized for GravityContract {
 }
 
 impl Pack for GravityContract {
-    const LEN: usize = 138;
+    const LEN: usize = 74;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
