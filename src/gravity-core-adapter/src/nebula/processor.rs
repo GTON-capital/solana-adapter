@@ -18,6 +18,8 @@ use spl_token::{
     state::Multisig,
 };
 
+use uuid::Uuid;
+
 use crate::gravity::{
     error::GravityError,
     instruction::GravityContractInstruction,
@@ -30,7 +32,42 @@ use crate::nebula::{
     state::{DataType, NebulaContract, PulseID},
 };
 
-use crate::gravity::processor::MiscProcessor;
+use crate::gravity::{
+    processor::MiscProcessor,
+    misc::ContractStateValidator
+};
+
+
+struct NebulaStateValidator;
+
+impl ContractStateValidator for NebulaStateValidator {
+
+    fn extract_account_data(
+        accounts: Vec<AccountInfo>,
+    ) -> Result<AccountInfo, ProgramError> {
+        let account_info_iter = &mut accounts.iter();
+
+        let initializer = next_account_info(account_info_iter)?;
+
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let nebula_contract_account = next_account_info(account_info_iter)?;
+
+        Ok(nebula_contract_account.clone())
+    }
+
+    fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
+        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])
+    }
+
+    fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
+        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])
+    }
+}
 
 pub struct NebulaProcessor;
 
@@ -47,13 +84,14 @@ impl NebulaProcessor {
 
         let initializer = next_account_info(account_info_iter)?;
 
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+        // if !initializer.is_signer {
+        //     return Err(ProgramError::MissingRequiredSignature);
+        // }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        // validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        NebulaStateValidator::validate_non_initialized(accounts)?;
 
         msg!("instantiating nebula contract");
 
@@ -103,13 +141,14 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+        // if !initializer.is_signer {
+        //     return Err(ProgramError::MissingRequiredSignature);
+        // }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        // validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        NebulaStateValidator::validate_initialized(accounts)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -152,6 +191,37 @@ impl NebulaProcessor {
         Ok(())
     }
 
+    pub fn process_nebula_subscription(
+        accounts: &[AccountInfo],
+        subscriber_address: Pubkey,
+        min_confirmations: u8,
+        reward: u64,
+        program_id: &Pubkey
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let initializer = next_account_info(account_info_iter)?;
+
+        let nebula_contract_account = next_account_info(account_info_iter)?;
+
+        NebulaStateValidator::validate_initialized(accounts)?;
+
+        let mut nebula_contract_info = NebulaContract::unpack(
+            &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
+        )?;
+
+        // nebula_contract_info.
+        msg!("generating subscription id");
+        let mut subscription_id = nebula_contract_info.new_subscription_id();
+
+        msg!("subscribing");
+
+        nebula_contract_info.subscribe(&subscription_id, subscriber_address, *nebula_contract_account.key, min_confirmations, reward)?;
+
+        msg!("successfully subscribed!");
+
+        Ok(())
+    }
+
     pub fn process(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -189,7 +259,22 @@ impl NebulaProcessor {
                     new_round,
                     program_id,
                 )
-            }
+            },
+            NebulaContractInstruction::Subscribe {
+                address,
+                min_confirmations,
+                reward
+            } => {
+                msg!("Instruction: Subscribe To Nebula");
+
+                Self::process_nebula_subscription(
+                    accounts,
+                    address,
+                    min_confirmations,
+                    reward,
+                    program_id
+                )
+            },
             _ => Err(GravityError::InvalidInstruction.into()),
         }
     }

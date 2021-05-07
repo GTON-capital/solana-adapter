@@ -7,9 +7,11 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+use crate::nebula::error::NebulaError;
 use crate::gravity::state::PartialStorage;
 
 use bincode;
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
 // extern crate sha2;
@@ -41,15 +43,16 @@ impl DataType {
 }
 
 // pub type SubscriptionID<'a> = &'a [u8];
-pub type SubscriptionID = Vec<u8>;
+// pub type SubscriptionID = Vec<u8>;
+pub type SubscriptionID = [u8; 16];
 pub type PulseID = u64;
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {
-    pub address: Pubkey,
+    pub subscriber_address: Pubkey,
     pub contract_address: Pubkey,
-    pub min_confirmations: i8,
-    pub reward: i64, // should be 2^256
+    pub min_confirmations: u8,
+    pub reward: u64, // should be 2^256
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
@@ -79,7 +82,7 @@ pub struct NebulaContract {
     pub data_type: DataType,
     pub last_round: PulseID,
 
-    subscription_ids: Vec<SubscriptionID>,
+    // subscription_ids: Vec<SubscriptionID>,
     last_pulse_id: PulseID,
 
     subscriptions_map: HashMap<SubscriptionID, Subscription>,
@@ -116,5 +119,48 @@ impl Pack for NebulaContract {
         for (i, val) in nebula_sliced.iter().enumerate() {
             dst[i] = *val;
         }
+    }
+}
+
+impl NebulaContract {
+    pub fn subscription_id_exists(&self, target: &SubscriptionID) -> bool {
+        return !self.subscriptions_map.get(target).is_none()
+    }
+
+    pub fn new_subscription_id(&self) -> SubscriptionID {
+        let mut sub_id = Uuid::new_v4();
+
+        while self.subscription_id_exists(&sub_id.as_bytes()) {
+            sub_id = Uuid::new_v4()
+        }
+
+        sub_id.as_bytes().clone()
+    }
+    
+    pub fn subscribe(
+        &mut self,
+        sub_id: &SubscriptionID,
+        subscriber_address: Pubkey,
+        contract_address: Pubkey,
+        min_confirmations: u8,
+        reward: u64,
+    ) -> Result<(), NebulaError> {
+        if self.subscription_id_exists(&sub_id) {
+            return Err(NebulaError::SubscriberExists);
+        }
+
+        let subscription = Subscription {
+            subscriber_address,
+            contract_address,
+            min_confirmations,
+            reward
+        };
+
+        self.subscriptions_map.insert(
+            *sub_id,
+            subscription
+        );
+
+        Ok(())
     }
 }

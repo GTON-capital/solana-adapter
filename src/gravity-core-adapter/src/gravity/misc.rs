@@ -1,6 +1,11 @@
 use std::error;
 
-use solana_program::program_error::ProgramError;
+
+use solana_program::{
+    program_error::ProgramError,
+    entrypoint::ProgramResult,
+    account_info::AccountInfo
+};
 use std::convert::TryInto;
 
 use crate::gravity::error::GravityError::InvalidInstruction;
@@ -44,4 +49,13 @@ pub fn validate_contract_emptiness(target_contract: &[u8]) -> Result<(), Program
     }
 
     Ok(())
+}
+
+
+
+pub trait ContractStateValidator {
+    fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo<'_>, ProgramError>;
+
+    fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult;
+    fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult;
 }
