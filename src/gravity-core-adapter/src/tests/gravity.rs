@@ -3,7 +3,7 @@
 
 use {
     crate::entrypoint::process_instruction,
-    crate::processor::Processor,
+    crate::gravity::profcgessor::GravityProcessor as Processor,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,

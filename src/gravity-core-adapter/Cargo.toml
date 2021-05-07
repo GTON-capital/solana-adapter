@@ -10,10 +10,10 @@ edition = "2018"
 
 [features]
 default = ["gravity-contract"]
-gravity = ["gravity-contract", "nebula-contract", "lu-port-contract"]
+gravity = ["gravity-contract", "nebula-contract", "luport-contract"]
 gravity-contract = []
 nebula-contract = []
-lu-port-contract = []
+luport-contract = []
 no-entrypoint = []
 test-bpf = []
 

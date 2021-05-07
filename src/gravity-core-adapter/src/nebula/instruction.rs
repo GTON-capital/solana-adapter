@@ -16,7 +16,6 @@ use arrayref::{array_ref, array_refs};
 // use hex;
 
 use crate::gravity::misc::extract_from_range;
-use crate::gravity::state::GravityContract;
 use crate::nebula::state::DataType;
 
 use crate::nebula::state::PulseID;
@@ -24,23 +23,6 @@ use crate::nebula::state::PulseID;
 // use hex;
 // use crate::state::misc::WrappedResult;
 use crate::gravity::error::GravityError::InvalidInstruction;
-
-mod utils {
-    use super::*;
-
-    pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -> U>(
-        input: &'a [u8],
-        index: std::ops::Range<usize>,
-        f: F,
-    ) -> Result<U, ProgramError> {
-        let res = input
-            .get(index)
-            .and_then(|slice| slice.try_into().ok())
-            .map(f)
-            .ok_or(InvalidInstruction)?;
-        Ok(res)
-    }
-}
 
 pub enum NebulaContractInstruction {
     InitContract {
@@ -61,6 +43,11 @@ pub enum NebulaContractInstruction {
         pulse_id: PulseID,
         subscription_id: UUID,
     },
+    Subscribe {
+        address: Pubkey,
+        min_confirmations: u8,
+        reward: u64
+    }
 }
 
 fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
@@ -215,6 +202,40 @@ impl NebulaContractInstruction {
                     data_type,
                     pulse_id: new_round,
                     subscription_id,
+                }
+            },
+            // Subscribe
+            4 => {
+                let allocs = vec![
+                    Self::PUBKEY_ALLOC,
+                    1,
+                    8
+                ];
+                let built_range = build_range_from_alloc(&allocs);
+                let (address, min_confirmations, reward) = (built_range[0], built_range[1], built_range[2]);
+
+                let address = Pubkey::new_from_array(*array_ref![
+                    address,
+                    0,
+                    32
+                ]);
+                
+                let min_confirmations = extract_from_range(
+                    rest,
+                    min_confirmations,
+                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
+                )?;
+
+                let reward = extract_from_range(
+                    rest,
+                    reward,
+                    |x: &[u8]| u64::from_le_bytes(*array_ref![x, 0, 8]),
+                )?;
+
+                Self::Subscribe {
+                    address,
+                    min_confirmations,
+                    reward
                 }
             }
             _ => return Err(InvalidInstruction.into()),
