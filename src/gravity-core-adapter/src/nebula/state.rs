@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::time::{Duration, SystemTime};
 
 use solana_program::{
     program_error::ProgramError,
@@ -12,6 +13,7 @@ use crate::nebula::error::NebulaError;
 
 use bincode;
 use serde::{Deserialize, Serialize};
+use uuid::v1::{Timestamp, Context};
 use uuid::Uuid;
 
 // extern crate sha2;
@@ -48,7 +50,7 @@ pub type PulseID = u64;
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {
-    pub subscriber_address: Pubkey,
+    pub sender: Pubkey,
     pub contract_address: Pubkey,
     pub min_confirmations: u8,
     pub reward: u64, // should be 2^256
@@ -56,8 +58,8 @@ pub struct Subscription {
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
-    pub data_hash: SubscriptionID,
-    pub height: i128,
+    pub data_hash: Vec<u8>,
+    pub height: u128,
 }
 
 // #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
@@ -82,7 +84,7 @@ pub struct NebulaContract {
     pub last_round: PulseID,
 
     // subscription_ids: Vec<SubscriptionID>,
-    last_pulse_id: PulseID,
+    pub last_pulse_id: PulseID,
 
     subscriptions_map: HashMap<SubscriptionID, Subscription>,
     pulses_map: HashMap<PulseID, Pulse>,
@@ -122,38 +124,39 @@ impl Pack for NebulaContract {
 }
 
 impl NebulaContract {
-    pub fn subscription_id_exists(&self, target: &SubscriptionID) -> bool {
-        return !self.subscriptions_map.get(target).is_none();
-    }
 
-    pub fn new_subscription_id(&self) -> SubscriptionID {
-        let mut sub_id = Uuid::new_v4();
+    pub fn add_pulse(&mut self, new_pulse_id: PulseID, data_hash: Vec<u8>, block_number: u128) -> Result<(), NebulaError> {
+        self.pulses_map.insert(new_pulse_id, Pulse {
+            data_hash,
+            height: block_number
+        });
 
-        while self.subscription_id_exists(&sub_id.as_bytes()) {
-            sub_id = Uuid::new_v4()
-        }
-
-        sub_id.as_bytes().clone()
+        Ok(())
     }
 
     pub fn subscribe(
         &mut self,
-        sub_id: &SubscriptionID,
-        subscriber_address: Pubkey,
+        // sub_id: &SubscriptionID,
+        sender: Pubkey,
         contract_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
     ) -> Result<(), NebulaError> {
-        if self.subscription_id_exists(&sub_id) {
-            return Err(NebulaError::SubscriberExists);
-        }
+        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        let context = Context::new(50);
 
+        let ts = Timestamp::from_unix(&context, current_time.as_secs(), current_time.subsec_nanos());
         let subscription = Subscription {
-            subscriber_address,
+            sender,
             contract_address,
             min_confirmations,
             reward,
         };
+
+        let serialized_subscription: Vec<u8> = bincode::serialize(&subscription).unwrap();
+        let uuid = Uuid::new_v1(ts, &serialized_subscription[0..6]).expect("failed to generate UUID");
+
+        let sub_id = uuid.as_bytes();
 
         self.subscriptions_map.insert(*sub_id, subscription);
 

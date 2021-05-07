@@ -10,15 +10,15 @@ use std::convert::TryInto;
 use std::ops::Range;
 use std::slice::SliceIndex;
 
-use uuid::{Builder as UUIDBuilder, Uuid as UUID};
+// use uuid::{Builder as UUIDBuilder, Uuid as UUID};
+// use std::bytes::Bytes;
 
 use arrayref::{array_ref, array_refs};
 // use hex;
 
 use crate::gravity::misc::extract_from_range;
-use crate::nebula::state::DataType;
 
-use crate::nebula::state::PulseID;
+use crate::nebula::state::{PulseID, SubscriptionID, DataType};
 
 // use hex;
 // use crate::state::misc::WrappedResult;
@@ -36,12 +36,12 @@ pub enum NebulaContractInstruction {
         new_round: PulseID,
     },
     SendHashValue {
-        data_hash: UUID,
+        data_hash: Vec<u8>,
     },
     SendValueToSubs {
         data_type: DataType,
         pulse_id: PulseID,
-        subscription_id: UUID,
+        subscription_id: SubscriptionID,
     },
     Subscribe {
         address: Pubkey,
@@ -117,6 +117,7 @@ impl NebulaContractInstruction {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
+            // InitContract
             0 => {
                 let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
@@ -145,6 +146,7 @@ impl NebulaContractInstruction {
                     oracles_bft,
                 }
             }
+            // UpdateOracles
             1 => {
                 let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
@@ -171,12 +173,13 @@ impl NebulaContractInstruction {
                 let ranges = build_range_from_alloc(&allocs);
 
                 let data_hash = extract_from_range(rest, ranges[0].clone(), |x: &[u8]| {
-                    UUIDBuilder::from_bytes(*array_ref![x, 0, 16])
-                })?
-                .build();
+                    *array_ref![x, 0, 16]
+                })?;
+                let data_hash = data_hash.to_vec();
 
                 Self::SendHashValue { data_hash }
-            }
+            },
+            // SendValueToSubs
             3 => {
                 let allocs = vec![
                     Self::DATA_TYPE_ALLOC_RANGE,
@@ -194,9 +197,8 @@ impl NebulaContractInstruction {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
                 let subscription_id = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
-                    UUIDBuilder::from_bytes(*array_ref![x, 0, 16])
-                })?
-                .build();
+                    *array_ref![x, 0, 16]
+                })?;
 
                 Self::SendValueToSubs {
                     data_type,
@@ -232,7 +234,7 @@ impl NebulaContractInstruction {
                     min_confirmations,
                     reward,
                 }
-            }
+            },
             _ => return Err(InvalidInstruction.into()),
         })
     }

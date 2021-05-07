@@ -8,7 +8,7 @@ pub enum NebulaError {
     #[error("Failed to send value to subs")]
     SendValueToSubsFailed,
     #[error("Sub id exists")]
-    SubscriberExists, // #
+    SubscriberExists,
 }
 
 impl From<NebulaError> for ProgramError {

@@ -29,7 +29,7 @@ use crate::gravity::{
 
 use crate::nebula::{
     instruction::NebulaContractInstruction,
-    state::{DataType, NebulaContract, PulseID},
+    state::{DataType, NebulaContract, PulseID, SubscriptionID},
 };
 
 use crate::gravity::{misc::ContractStateValidator, processor::MiscProcessor};
@@ -53,12 +53,14 @@ impl ContractStateValidator for NebulaStateValidator {
 
     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])
+        let borrowed_data = nebula_contract_account.try_borrow_data()?;
+        validate_contract_emptiness(&borrowed_data[..])
     }
 
     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])
+        let borrowed_data = nebula_contract_account.try_borrow_data()?;
+        validate_contract_non_emptiness(&borrowed_data[..])
     }
 }
 
@@ -184,6 +186,76 @@ impl NebulaProcessor {
         Ok(())
     }
 
+    pub fn process_nebula_send_hash_value(
+        accounts: &[AccountInfo],
+        data_hash: Vec<u8>,
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let initializer = next_account_info(account_info_iter)?;
+
+        let nebula_contract_account = next_account_info(account_info_iter)?;
+
+        NebulaStateValidator::validate_initialized(accounts)?;
+
+        let mut nebula_contract_info = NebulaContract::unpack(
+            &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
+        )?;
+
+        if !nebula_contract_info.is_initialized() {
+            return Err(ProgramError::UninitializedAccount);
+        }
+
+        let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
+        let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+
+        let current_multisig_owners = &accounts[3..];
+
+        msg!("checking multisig bft count");
+        match MiscProcessor::validate_owner(
+            program_id,
+            &nebula_contract_multisig_account_pubkey,
+            &nebula_contract_multisig_account,
+            &current_multisig_owners.to_vec(),
+        ) {
+            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            _ => {}
+        };
+
+        msg!("incrementing pulse id");
+
+        let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
+
+        nebula_contract_info.add_pulse(new_pulse_id, &current_multisig_owners.to_vec(), );
+        // nebula_contract_info.pulses_map[new_pulse_id] = Pulse {
+
+        // };
+
+
+        Ok(())
+    }
+
+    pub fn process_nebula_send_value_to_subs(
+        accounts: &[AccountInfo],
+        data_type: DataType,
+        pulse_id: PulseID,
+        subscription_id: SubscriptionID,
+        program_id: &Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let initializer = next_account_info(account_info_iter)?;
+
+        let nebula_contract_account = next_account_info(account_info_iter)?;
+
+        NebulaStateValidator::validate_initialized(accounts)?;
+
+        let mut nebula_contract_info = NebulaContract::unpack(
+            &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
+        )?;
+
+        Ok(())
+    }
+
     pub fn process_nebula_subscription(
         accounts: &[AccountInfo],
         subscriber_address: Pubkey,
@@ -203,15 +275,14 @@ impl NebulaProcessor {
         )?;
 
         // nebula_contract_info.
-        msg!("generating subscription id");
-        let mut subscription_id = nebula_contract_info.new_subscription_id();
+        // let mut subscription_id = nebula_contract_info.new_subscription_id();
 
+        msg!("generating subscription id");
         msg!("subscribing");
 
         nebula_contract_info.subscribe(
-            &subscription_id,
-            subscriber_address,
             *nebula_contract_account.key,
+            subscriber_address,
             min_confirmations,
             reward,
         )?;
@@ -256,6 +327,30 @@ impl NebulaProcessor {
                     accounts,
                     new_oracles,
                     new_round,
+                    program_id,
+                )
+            }
+            NebulaContractInstruction::SendHashValue {
+                data_hash
+            } => {
+                msg!("Instruction: Send Hash Value");
+
+                Self::process_nebula_send_hash_value(
+                    accounts,
+                    data_hash,
+                    program_id,
+                )
+            }
+            NebulaContractInstruction::SendValueToSubs {
+                data_type, pulse_id, subscription_id
+            } => {
+                msg!("Instruction: Send Value To Subs");
+
+                Self::process_nebula_send_value_to_subs(
+                    accounts,
+                    data_type,
+                    pulse_id,
+                    subscription_id,
                     program_id,
                 )
             }
