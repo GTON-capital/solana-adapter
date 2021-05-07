@@ -40,7 +40,7 @@ pub trait PartialStorage {
         return &raw_data[Self::DATA_RANGE];
     }
 
-    fn store_data_range() -> std::ops::Range<usize> { 
+    fn store_data_range() -> std::ops::Range<usize> {
         Self::DATA_RANGE
     }
 }
@@ -175,9 +175,10 @@ mod tests {
             println!("len is: {} \n", serialized_gravity_contract_bytes.len());
 
             // deserialize
-            let deserialized_gravity_contract =
-                GravityContract::unpack(&mut serialized_gravity_contract_bytes[GravityContract::store_data_range()])
-                    .expect("deserialization failed!");
+            let deserialized_gravity_contract = GravityContract::unpack(
+                &mut serialized_gravity_contract_bytes[GravityContract::store_data_range()],
+            )
+            .expect("deserialization failed!");
             // let deserialized_gravity_contract = GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
             //     .expect("deserialization failed!");
 

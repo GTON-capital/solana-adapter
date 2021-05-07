@@ -7,16 +7,15 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::nebula::error::NebulaError;
 use crate::gravity::state::PartialStorage;
+use crate::nebula::error::NebulaError;
 
 use bincode;
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 // extern crate sha2;
 // use sha2::Sha256;
-
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum DataType {
@@ -124,7 +123,7 @@ impl Pack for NebulaContract {
 
 impl NebulaContract {
     pub fn subscription_id_exists(&self, target: &SubscriptionID) -> bool {
-        return !self.subscriptions_map.get(target).is_none()
+        return !self.subscriptions_map.get(target).is_none();
     }
 
     pub fn new_subscription_id(&self) -> SubscriptionID {
@@ -136,7 +135,7 @@ impl NebulaContract {
 
         sub_id.as_bytes().clone()
     }
-    
+
     pub fn subscribe(
         &mut self,
         sub_id: &SubscriptionID,
@@ -153,13 +152,10 @@ impl NebulaContract {
             subscriber_address,
             contract_address,
             min_confirmations,
-            reward
+            reward,
         };
 
-        self.subscriptions_map.insert(
-            *sub_id,
-            subscription
-        );
+        self.subscriptions_map.insert(*sub_id, subscription);
 
         Ok(())
     }

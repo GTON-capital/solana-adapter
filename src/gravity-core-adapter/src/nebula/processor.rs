@@ -32,19 +32,12 @@ use crate::nebula::{
     state::{DataType, NebulaContract, PulseID},
 };
 
-use crate::gravity::{
-    processor::MiscProcessor,
-    misc::ContractStateValidator
-};
-
+use crate::gravity::{misc::ContractStateValidator, processor::MiscProcessor};
 
 struct NebulaStateValidator;
 
 impl ContractStateValidator for NebulaStateValidator {
-
-    fn extract_account_data(
-        accounts: Vec<AccountInfo>,
-    ) -> Result<AccountInfo, ProgramError> {
+    fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo, ProgramError> {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
@@ -196,7 +189,7 @@ impl NebulaProcessor {
         subscriber_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
-        program_id: &Pubkey
+        program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
@@ -215,7 +208,13 @@ impl NebulaProcessor {
 
         msg!("subscribing");
 
-        nebula_contract_info.subscribe(&subscription_id, subscriber_address, *nebula_contract_account.key, min_confirmations, reward)?;
+        nebula_contract_info.subscribe(
+            &subscription_id,
+            subscriber_address,
+            *nebula_contract_account.key,
+            min_confirmations,
+            reward,
+        )?;
 
         msg!("successfully subscribed!");
 
@@ -259,11 +258,11 @@ impl NebulaProcessor {
                     new_round,
                     program_id,
                 )
-            },
+            }
             NebulaContractInstruction::Subscribe {
                 address,
                 min_confirmations,
-                reward
+                reward,
             } => {
                 msg!("Instruction: Subscribe To Nebula");
 
@@ -272,9 +271,9 @@ impl NebulaProcessor {
                     address,
                     min_confirmations,
                     reward,
-                    program_id
+                    program_id,
                 )
-            },
+            }
             _ => Err(GravityError::InvalidInstruction.into()),
         }
     }

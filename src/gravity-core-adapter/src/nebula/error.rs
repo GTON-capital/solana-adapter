@@ -6,12 +6,9 @@ use solana_program::program_error::ProgramError;
 pub enum NebulaError {
     /// Failed to send value to subs
     #[error("Failed to send value to subs")]
-    SendValueToSubsFailed
-
+    SendValueToSubsFailed,
     #[error("Sub id exists")]
-    SubscriberExists
-
-    // #
+    SubscriberExists, // #
 }
 
 impl From<NebulaError> for ProgramError {

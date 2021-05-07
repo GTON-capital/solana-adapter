@@ -1,10 +1,7 @@
 use std::error;
 
-
 use solana_program::{
-    program_error::ProgramError,
-    entrypoint::ProgramResult,
-    account_info::AccountInfo
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
 };
 use std::convert::TryInto;
 
@@ -50,8 +47,6 @@ pub fn validate_contract_emptiness(target_contract: &[u8]) -> Result<(), Program
 
     Ok(())
 }
-
-
 
 pub trait ContractStateValidator {
     fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo<'_>, ProgramError>;
