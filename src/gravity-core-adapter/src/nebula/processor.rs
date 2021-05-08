@@ -7,7 +7,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use solana_client::rpc_client::RpcClient;
+// use solana_client::rpc_client::RpcClient;
 
 use spl_token::{
     // instruction::initialize_multisig,
@@ -256,20 +256,20 @@ impl NebulaProcessor {
 
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
-        let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
-        let nebula_contract_multisig_info = rpc_client
-            .get_account(&nebula_contract_multisig_account_pubkey)
-            .unwrap();
+        // let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
+        // let nebula_contract_multisig_info = rpc_client
+        //     .get_account(&nebula_contract_multisig_account_pubkey)
+        //     .unwrap();
 
-        let nebula_multisig_info =
-            Multisig::unpack(&nebula_contract_multisig_info.data[0..NebulaContract::LEN])?;
+        // let nebula_multisig_info =
+        //     Multisig::unpack(&nebula_contract_multisig_info.data[0..NebulaContract::LEN])?;
 
-        NebulaContract::validate_data_provider(
-            nebula_multisig_info.signers.to_vec(),
-            initializer.key,
-        )?;
+        // NebulaContract::validate_data_provider(
+        //     nebula_multisig_info.signers.to_vec(),
+        //     initializer.key,
+        // )?;
 
-        nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
+        // nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
 
         // rpc_client.send_and_confirm
 

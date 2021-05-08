@@ -20,7 +20,7 @@ test-bpf = []
 [dependencies]
 byteorder = "1.3"
 solana-program = "=1.6.2"
-solana-client = "=1.6.2"
+# solana-client = "=1.6.2"
 thiserror = "1.0.24"
 spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
