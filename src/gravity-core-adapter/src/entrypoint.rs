@@ -11,9 +11,9 @@ use solana_program::{
 use cfg_if;
 
 use spl_token::{
-    instruction::initialize_multisig,
     // state::Account as TokenAccount
     error::TokenError,
+    instruction::initialize_multisig,
     instruction::is_valid_signer_index,
 
     // processor::Processor::process_initialize_multisig,
@@ -37,10 +37,12 @@ cfg_if::cfg_if! {
         fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
             GravityProcessor::process(program_id, accounts, instruction_data)
         }
-    } else  if #[cfg(feature = "nebula-contract")] {
+    } else if #[cfg(feature = "nebula-contract")] {
         fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
             NebulaProcessor::process(program_id, accounts, instruction_data)
         }
+    } else {
+        panic!("invalid endpoint provided");
     }
 }
 

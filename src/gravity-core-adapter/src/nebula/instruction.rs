@@ -10,37 +10,21 @@ use std::convert::TryInto;
 use std::ops::Range;
 use std::slice::SliceIndex;
 
+// use uuid::{Builder as UUIDBuilder, Uuid as UUID};
+// use std::bytes::Bytes;
+
 use arrayref::{array_ref, array_refs};
 // use hex;
 
 use crate::gravity::misc::extract_from_range;
-use crate::gravity::state::GravityContract;
-use crate::nebula::state::DataType;
 
-use crate::nebula::state::PulseID;
+use crate::nebula::state::{DataType, PulseID, SubscriptionID};
 
 // use hex;
 // use crate::state::misc::WrappedResult;
 use crate::gravity::error::GravityError::InvalidInstruction;
 
-mod utils {
-    use super::*;
-
-    pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -> U>(
-        input: &'a [u8],
-        index: std::ops::Range<usize>,
-        f: F,
-    ) -> Result<U, ProgramError> {
-        let res = input
-            .get(index)
-            .and_then(|slice| slice.try_into().ok())
-            .map(f)
-            .ok_or(InvalidInstruction)?;
-        Ok(res)
-    }
-}
-
-pub enum NebulaContractInstruction<'a> {
+pub enum NebulaContractInstruction {
     InitContract {
         nebula_data_type: DataType,
         gravity_contract_program_id: Pubkey,
@@ -52,12 +36,17 @@ pub enum NebulaContractInstruction<'a> {
         new_round: PulseID,
     },
     SendHashValue {
-        data_hash: &'a [u8],
+        data_hash: Vec<u8>,
     },
     SendValueToSubs {
         data_type: DataType,
         pulse_id: PulseID,
-        subscription_id: &'a [u8],
+        subscription_id: SubscriptionID,
+    },
+    Subscribe {
+        address: Pubkey,
+        min_confirmations: u8,
+        reward: u64,
     },
 }
 
@@ -115,18 +104,20 @@ mod tests {
     }
 }
 
-impl<'a> NebulaContractInstruction<'a> {
+impl NebulaContractInstruction {
     const BFT_ALLOC: usize = 1;
     const DATA_TYPE_ALLOC_RANGE: usize = 1;
     const PUBKEY_ALLOC: usize = 32;
     const ROUND_ALLOC: usize = 8;
+    const DATA_HASH_ALLOC: usize = 16;
 
     // pub fn match_instruction_byte_order(instruction: Self)
 
-    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
+            // InitContract
             0 => {
                 let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
@@ -155,6 +146,7 @@ impl<'a> NebulaContractInstruction<'a> {
                     oracles_bft,
                 }
             }
+            // UpdateOracles
             1 => {
                 let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
@@ -174,6 +166,71 @@ impl<'a> NebulaContractInstruction<'a> {
                 Self::UpdateOracles {
                     new_oracles,
                     new_round,
+                }
+            }
+            2 => {
+                let allocs = vec![Self::DATA_HASH_ALLOC];
+                let ranges = build_range_from_alloc(&allocs);
+
+                let data_hash =
+                    extract_from_range(rest, ranges[0].clone(), |x: &[u8]| *array_ref![x, 0, 16])?;
+                let data_hash = data_hash.to_vec();
+
+                Self::SendHashValue { data_hash }
+            }
+            // SendValueToSubs
+            3 => {
+                let allocs = vec![
+                    Self::DATA_TYPE_ALLOC_RANGE,
+                    Self::ROUND_ALLOC,
+                    Self::DATA_HASH_ALLOC,
+                ];
+                let ranges = build_range_from_alloc(&allocs);
+
+                let data_type = DataType::cast_from(extract_from_range(
+                    rest,
+                    ranges[0].clone(),
+                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
+                )?);
+                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                    PulseID::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
+                let subscription_id =
+                    extract_from_range(rest, ranges[2].clone(), |x: &[u8]| *array_ref![x, 0, 16])?;
+
+                Self::SendValueToSubs {
+                    data_type,
+                    pulse_id: new_round,
+                    subscription_id,
+                }
+            }
+            // Subscribe
+            4 => {
+                let allocs = vec![Self::PUBKEY_ALLOC, 1, 8];
+                let built_range = build_range_from_alloc(&allocs);
+                let (address, min_confirmations, reward) = (
+                    built_range[0].clone(),
+                    built_range[1].clone(),
+                    built_range[2].clone(),
+                );
+
+                let address = extract_from_range(rest, address, |x: &[u8]| {
+                    Pubkey::new_from_array(*array_ref![x, 0, 32])
+                })?;
+
+                let min_confirmations =
+                    extract_from_range(rest, min_confirmations, |x: &[u8]| {
+                        u8::from_le_bytes(*array_ref![x, 0, 1])
+                    })?;
+
+                let reward = extract_from_range(rest, reward, |x: &[u8]| {
+                    u64::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
+
+                Self::Subscribe {
+                    address,
+                    min_confirmations,
+                    reward,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

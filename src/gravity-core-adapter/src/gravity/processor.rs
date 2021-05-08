@@ -19,8 +19,11 @@ use spl_token::{
 };
 
 use crate::gravity::{
-    error::GravityError, instruction::GravityContractInstruction,
-    misc::validate_contract_emptiness, state::GravityContract,
+    error::GravityError,
+    instruction::GravityContractInstruction,
+    misc::{validate_contract_emptiness, validate_contract_non_emptiness},
+    state::GravityContract,
+    state::PartialStorage,
 };
 
 use crate::nebula::{
@@ -107,7 +110,8 @@ impl GravityProcessor {
 
         GravityContract::pack(
             gravity_contract_info,
-            &mut gravity_contract_account.try_borrow_mut_data()?[0..138],
+            &mut gravity_contract_account.try_borrow_mut_data()?
+                [GravityContract::store_data_range()],
         )?;
 
         msg!("picking multisig account");
@@ -136,8 +140,11 @@ impl GravityProcessor {
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
-        let mut gravity_contract_info =
-            GravityContract::unpack(&gravity_contract_account.try_borrow_data()?[0..138])?;
+        validate_contract_non_emptiness(&gravity_contract_account.try_borrow_data()?[..])?;
+
+        let mut gravity_contract_info = GravityContract::unpack(
+            &gravity_contract_account.try_borrow_data()?[GravityContract::store_data_range()],
+        )?;
         if !gravity_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
         }
@@ -166,7 +173,8 @@ impl GravityProcessor {
 
         GravityContract::pack(
             gravity_contract_info,
-            &mut gravity_contract_account.try_borrow_mut_data()?[0..138],
+            &mut gravity_contract_account.try_borrow_mut_data()?
+                [GravityContract::store_data_range()],
         )?;
 
         Ok(())

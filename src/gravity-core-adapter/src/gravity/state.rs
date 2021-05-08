@@ -39,10 +39,14 @@ pub trait PartialStorage {
     fn store_at<'a>(raw_data: &'a [u8]) -> &'a [u8] {
         return &raw_data[Self::DATA_RANGE];
     }
+
+    fn store_data_range() -> std::ops::Range<usize> {
+        Self::DATA_RANGE
+    }
 }
 
 impl PartialStorage for GravityContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..138;
+    const DATA_RANGE: std::ops::Range<usize> = 0..74;
 }
 
 impl Sealed for GravityContract {}
@@ -54,12 +58,12 @@ impl IsInitialized for GravityContract {
 }
 
 impl Pack for GravityContract {
-    const LEN: usize = 138;
+    const LEN: usize = 74;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, GravityContract::LEN];
         let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
-            array_refs![src, 1, 32, 1, 32 * 3, 8];
+            array_refs![src, 1, 32, 1, 32 * 1, 8];
         let is_initialized = is_initialized[0] != 0;
 
         Ok(GravityContract {
@@ -68,8 +72,8 @@ impl Pack for GravityContract {
             bft: u8::from_le_bytes(*bft),
             consuls: vec![
                 Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
-                Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
-                Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
+                // Pubkey::new_from_array(*array_ref![consuls[32..64], 0, 32]),
+                // Pubkey::new_from_array(*array_ref![consuls[64..96], 0, 32]),
             ],
             last_round: u64::from_le_bytes(*last_round),
         })
@@ -78,7 +82,7 @@ impl Pack for GravityContract {
     fn pack_into_slice(&self, dst: &mut [u8]) {
         let dst = array_mut_ref![dst, 0, GravityContract::LEN];
         let (is_initialized_dst, initializer_pubkey_dst, bft_dst, consuls_dst, last_round_dst) =
-            mut_array_refs![dst, 1, 32, 1, 32 * 3, 8];
+            mut_array_refs![dst, 1, 32, 1, 32 * 1, 8];
 
         let GravityContract {
             is_initialized,
@@ -171,9 +175,10 @@ mod tests {
             println!("len is: {} \n", serialized_gravity_contract_bytes.len());
 
             // deserialize
-            let deserialized_gravity_contract =
-                GravityContract::unpack(&mut serialized_gravity_contract_bytes[0..138])
-                    .expect("deserialization failed!");
+            let deserialized_gravity_contract = GravityContract::unpack(
+                &mut serialized_gravity_contract_bytes[GravityContract::store_data_range()],
+            )
+            .expect("deserialization failed!");
             // let deserialized_gravity_contract = GravityContract::unpack_from_slice(&mut serialized_gravity_contract_bytes)
             //     .expect("deserialization failed!");
 

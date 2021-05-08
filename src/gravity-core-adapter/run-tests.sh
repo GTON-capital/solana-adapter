@@ -2,7 +2,7 @@
 
 set -ex
 cd "$(dirname "$0")"
-cargo clippy
+# cargo clippy
 cargo build
 cargo build-bpf
 
