@@ -88,7 +88,7 @@ pub struct NebulaContract {
 
     subscriptions_map: HashMap<SubscriptionID, Subscription>,
     pulses_map: HashMap<PulseID, Pulse>,
-    is_pulse_sent: HashMap<PulseID, HashMap<SubscriptionID, bool>>,
+    is_pulse_sent: HashMap<PulseID, bool>,
 
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
@@ -146,9 +146,11 @@ impl NebulaContract {
 
     const SERIALIZE_CONTEXT: u16 = 50;
 
-    fn new_subscription_id(&self, node_id: &[u8]) -> Result<SubscriptionID, Box<dyn std::error::Error>> {
-        let current_time = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)?;
+    fn new_subscription_id(
+        &self,
+        node_id: &[u8],
+    ) -> Result<SubscriptionID, Box<dyn std::error::Error>> {
+        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
 
         let context = Context::new(NebulaContract::SERIALIZE_CONTEXT);
 
@@ -158,14 +160,13 @@ impl NebulaContract {
             current_time.subsec_nanos(),
         );
 
-        let uuid =
-            Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
+        let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
 
         let sub_id = uuid.as_bytes();
 
         // an approach to avoid collision
         if self.subscriptions_map.contains_key(sub_id) {
-            return self.new_subscription_id(node_id)
+            return self.new_subscription_id(node_id);
         }
 
         Ok(*sub_id)
@@ -189,10 +190,50 @@ impl NebulaContract {
 
         let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
             Ok(val) => val,
-            Err(_) => return Err(NebulaError::SubscribeFailed)
+            Err(_) => return Err(NebulaError::SubscribeFailed),
         };
 
         self.subscriptions_map.insert(sub_id, subscription);
+
+        Ok(())
+    }
+
+    pub fn validate_data_provider(
+        multisig_owner_keys: Vec<Pubkey>,
+        data_provider: &Pubkey,
+    ) -> Result<(), NebulaError> {
+        for owner_key in multisig_owner_keys {
+            if owner_key == *data_provider {
+                return Ok(());
+            }
+        }
+
+        Err(NebulaError::DataProviderForSendValueToSubsIsInvalid)
+    }
+
+    pub fn send_value_to_subs(
+        &mut self,
+        data_type: DataType,
+        pulse_id: PulseID,
+        subscription_id: SubscriptionID,
+    ) -> Result<(), NebulaError> {
+        // check is value has been sent
+        // if self.subscriptions_map
+        if let Some(pulse_sent) = self.is_pulse_sent.get(&pulse_id) {
+            if *pulse_sent {
+                return Err(NebulaError::SubscriberValueBeenSent);
+            }
+        }
+
+        self.is_pulse_sent.insert(pulse_id, true);
+
+        let subscription = match self.subscriptions_map.get(&subscription_id) {
+            Some(v) => v,
+            None => return Err(NebulaError::InvalidSubscriptionID),
+        };
+
+        // TODO - cross program invocation
+        let destination_program_id = subscription.contract_address;
 
         Ok(())
     }

@@ -10,7 +10,15 @@ pub enum NebulaError {
     #[error("Sub id exists")]
     SubscriberExists,
     #[error("Subscribe failed")]
-    SubscribeFailed
+    SubscribeFailed,
+
+    #[error("Data provider for subscribers is invalid")]
+    DataProviderForSendValueToSubsIsInvalid,
+
+    #[error("Value has been already sent to subscriber")]
+    SubscriberValueBeenSent,
+    #[error("Invalid subscription id")]
+    InvalidSubscriptionID,
 }
 
 impl From<NebulaError> for ProgramError {
