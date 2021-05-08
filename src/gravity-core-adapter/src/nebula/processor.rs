@@ -226,11 +226,14 @@ impl NebulaProcessor {
 
         let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
 
-        nebula_contract_info.add_pulse(new_pulse_id, &current_multisig_owners.to_vec(), );
-        // nebula_contract_info.pulses_map[new_pulse_id] = Pulse {
+        let multisig_owner_keys = &current_multisig_owners.to_vec();
+        let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
+            vec![a, x.key.to_bytes().to_vec()].concat()
+        });
 
-        // };
+        let current_block = 0;
 
+        nebula_contract_info.add_pulse(new_pulse_id, data_hash, current_block)?;
 
         Ok(())
     }
@@ -253,6 +256,8 @@ impl NebulaProcessor {
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
+        
+
         Ok(())
     }
 
@@ -261,7 +266,7 @@ impl NebulaProcessor {
         subscriber_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
@@ -330,19 +335,15 @@ impl NebulaProcessor {
                     program_id,
                 )
             }
-            NebulaContractInstruction::SendHashValue {
-                data_hash
-            } => {
+            NebulaContractInstruction::SendHashValue { data_hash } => {
                 msg!("Instruction: Send Hash Value");
 
-                Self::process_nebula_send_hash_value(
-                    accounts,
-                    data_hash,
-                    program_id,
-                )
+                Self::process_nebula_send_hash_value(accounts, data_hash, program_id)
             }
             NebulaContractInstruction::SendValueToSubs {
-                data_type, pulse_id, subscription_id
+                data_type,
+                pulse_id,
+                subscription_id,
             } => {
                 msg!("Instruction: Send Value To Subs");
 

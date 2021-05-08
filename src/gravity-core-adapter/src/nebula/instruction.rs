@@ -18,7 +18,7 @@ use arrayref::{array_ref, array_refs};
 
 use crate::gravity::misc::extract_from_range;
 
-use crate::nebula::state::{PulseID, SubscriptionID, DataType};
+use crate::nebula::state::{DataType, PulseID, SubscriptionID};
 
 // use hex;
 // use crate::state::misc::WrappedResult;
@@ -172,13 +172,12 @@ impl NebulaContractInstruction {
                 let allocs = vec![Self::DATA_HASH_ALLOC];
                 let ranges = build_range_from_alloc(&allocs);
 
-                let data_hash = extract_from_range(rest, ranges[0].clone(), |x: &[u8]| {
-                    *array_ref![x, 0, 16]
-                })?;
+                let data_hash =
+                    extract_from_range(rest, ranges[0].clone(), |x: &[u8]| *array_ref![x, 0, 16])?;
                 let data_hash = data_hash.to_vec();
 
                 Self::SendHashValue { data_hash }
-            },
+            }
             // SendValueToSubs
             3 => {
                 let allocs = vec![
@@ -196,9 +195,8 @@ impl NebulaContractInstruction {
                 let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
-                let subscription_id = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
-                    *array_ref![x, 0, 16]
-                })?;
+                let subscription_id =
+                    extract_from_range(rest, ranges[2].clone(), |x: &[u8]| *array_ref![x, 0, 16])?;
 
                 Self::SendValueToSubs {
                     data_type,
@@ -234,7 +232,7 @@ impl NebulaContractInstruction {
                     min_confirmations,
                     reward,
                 }
-            },
+            }
             _ => return Err(InvalidInstruction.into()),
         })
     }

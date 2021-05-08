@@ -13,7 +13,7 @@ use crate::nebula::error::NebulaError;
 
 use bincode;
 use serde::{Deserialize, Serialize};
-use uuid::v1::{Timestamp, Context};
+use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
 // extern crate sha2;
@@ -59,7 +59,7 @@ pub struct Subscription {
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
     pub data_hash: Vec<u8>,
-    pub height: u128,
+    pub height: u64,
 }
 
 // #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
@@ -124,28 +124,60 @@ impl Pack for NebulaContract {
 }
 
 impl NebulaContract {
+    pub fn add_pulse(
+        &mut self,
+        new_pulse_id: PulseID,
+        data_hash: Vec<u8>,
+        block_number: u64,
+    ) -> Result<(), NebulaError> {
+        self.pulses_map.insert(
+            new_pulse_id,
+            Pulse {
+                data_hash,
+                height: block_number,
+            },
+        );
 
-    pub fn add_pulse(&mut self, new_pulse_id: PulseID, data_hash: Vec<u8>, block_number: u128) -> Result<(), NebulaError> {
-        self.pulses_map.insert(new_pulse_id, Pulse {
-            data_hash,
-            height: block_number
-        });
+        let new_last_pulse_id = new_pulse_id + 1;
+        self.last_pulse_id = new_last_pulse_id;
 
         Ok(())
     }
 
+    const SERIALIZE_CONTEXT: u16 = 50;
+
+    fn new_subscription_id(&self, node_id: &[u8]) -> Result<SubscriptionID, Box<dyn std::error::Error>> {
+        let current_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?;
+
+        let context = Context::new(NebulaContract::SERIALIZE_CONTEXT);
+
+        let ts = Timestamp::from_unix(
+            &context,
+            current_time.as_secs(),
+            current_time.subsec_nanos(),
+        );
+
+        let uuid =
+            Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
+
+        let sub_id = uuid.as_bytes();
+
+        // an approach to avoid collision
+        if self.subscriptions_map.contains_key(sub_id) {
+            return self.new_subscription_id(node_id)
+        }
+
+        Ok(*sub_id)
+    }
+
     pub fn subscribe(
         &mut self,
-        // sub_id: &SubscriptionID,
         sender: Pubkey,
         contract_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
     ) -> Result<(), NebulaError> {
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-        let context = Context::new(50);
-
-        let ts = Timestamp::from_unix(&context, current_time.as_secs(), current_time.subsec_nanos());
         let subscription = Subscription {
             sender,
             contract_address,
@@ -154,11 +186,13 @@ impl NebulaContract {
         };
 
         let serialized_subscription: Vec<u8> = bincode::serialize(&subscription).unwrap();
-        let uuid = Uuid::new_v1(ts, &serialized_subscription[0..6]).expect("failed to generate UUID");
 
-        let sub_id = uuid.as_bytes();
+        let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
+            Ok(val) => val,
+            Err(_) => return Err(NebulaError::SubscribeFailed)
+        };
 
-        self.subscriptions_map.insert(*sub_id, subscription);
+        self.subscriptions_map.insert(sub_id, subscription);
 
         Ok(())
     }
