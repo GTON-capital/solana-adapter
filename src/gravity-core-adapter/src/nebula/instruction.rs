@@ -16,7 +16,7 @@ use std::slice::SliceIndex;
 use arrayref::{array_ref, array_refs};
 // use hex;
 
-use crate::gravity::misc::extract_from_range;
+use crate::gravity::misc::{build_range_from_alloc, extract_from_range};
 
 use crate::nebula::state::{DataType, PulseID, SubscriptionID};
 
@@ -48,33 +48,6 @@ pub enum NebulaContractInstruction {
         min_confirmations: u8,
         reward: u64,
     },
-}
-
-fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
-    let mut res = vec![];
-
-    let mut i = 0;
-    let n = allocs.len();
-    let mut start_index = 0;
-
-    while i < n {
-        let current = allocs[i];
-        if i == 0 {
-            let alloc = 0..current;
-            res.push(alloc);
-            start_index = current;
-            i += 1;
-            continue;
-        }
-
-        let alloc = start_index..start_index + current;
-        res.push(alloc);
-        start_index += current;
-
-        i += 1;
-    }
-
-    res
 }
 
 #[cfg(test)]

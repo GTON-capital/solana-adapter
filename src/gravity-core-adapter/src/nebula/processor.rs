@@ -256,6 +256,8 @@ impl NebulaProcessor {
 
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
+        panic!("failed to send values");
+
         // let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
         // let nebula_contract_multisig_info = rpc_client
         //     .get_account(&nebula_contract_multisig_account_pubkey)

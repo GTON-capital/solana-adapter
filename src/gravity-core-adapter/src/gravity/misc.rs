@@ -2,8 +2,13 @@ use std::error;
 
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
 };
 use std::convert::TryInto;
+use std::ops::Range;
+use std::slice::SliceIndex;
+
+use arrayref::array_ref;
 
 use crate::gravity::error::GravityError::InvalidInstruction;
 
@@ -20,6 +25,41 @@ pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -
         .map(f)
         .ok_or(InvalidInstruction)?;
     Ok(res)
+}
+
+pub fn map_to_address(x: &[u8]) -> Pubkey {
+    // let address = extract_from_range(rest, address, |x: &[u8]| {
+    //     Pubkey::new_from_array(*array_ref![x, 0, 32])
+    // })?;
+
+    Pubkey::new_from_array(*array_ref![x, 0, 32])
+}
+
+pub fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
+    let mut res = vec![];
+
+    let mut i = 0;
+    let n = allocs.len();
+    let mut start_index = 0;
+
+    while i < n {
+        let current = allocs[i];
+        if i == 0 {
+            let alloc = 0..current;
+            res.push(alloc);
+            start_index = current;
+            i += 1;
+            continue;
+        }
+
+        let alloc = start_index..start_index + current;
+        res.push(alloc);
+        start_index += current;
+
+        i += 1;
+    }
+
+    res
 }
 
 pub fn is_contract_empty(target_contract: &[u8]) -> bool {
