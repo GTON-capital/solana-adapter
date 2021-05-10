@@ -32,8 +32,8 @@ pub enum NebulaContractInstruction {
         initial_oracles: Vec<Pubkey>,
     },
     UpdateOracles {
-        new_oracles: Vec<Pubkey>,
         new_round: PulseID,
+        new_oracles: Vec<Pubkey>,
     },
     SendHashValue {
         data_hash: Vec<u8>,
