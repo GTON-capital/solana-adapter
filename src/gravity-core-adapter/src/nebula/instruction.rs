@@ -28,8 +28,8 @@ pub enum NebulaContractInstruction {
     InitContract {
         nebula_data_type: DataType,
         gravity_contract_program_id: Pubkey,
-        initial_oracles: Vec<Pubkey>,
         oracles_bft: u8,
+        initial_oracles: Vec<Pubkey>,
     },
     UpdateOracles {
         new_oracles: Vec<Pubkey>,
@@ -39,10 +39,10 @@ pub enum NebulaContractInstruction {
         data_hash: Vec<u8>,
     },
     SendValueToSubs {
-        data_value: Vec<u8>,
         data_type: DataType,
         pulse_id: PulseID,
         subscription_id: SubscriptionID,
+        data_value: Vec<u8>,
     },
     Subscribe {
         address: Pubkey,
