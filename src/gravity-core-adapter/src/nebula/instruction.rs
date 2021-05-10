@@ -28,21 +28,21 @@ pub enum NebulaContractInstruction {
     InitContract {
         nebula_data_type: DataType,
         gravity_contract_program_id: Pubkey,
-        oracles_bft: u8,
         initial_oracles: Vec<Pubkey>,
+        oracles_bft: u8,
     },
     UpdateOracles {
-        new_round: PulseID,
         new_oracles: Vec<Pubkey>,
+        new_round: PulseID,
     },
     SendHashValue {
         data_hash: Vec<u8>,
     },
     SendValueToSubs {
+        data_value: Vec<u8>,
         data_type: DataType,
         pulse_id: PulseID,
         subscription_id: SubscriptionID,
-        data_value: Vec<u8>,
     },
     Subscribe {
         address: Pubkey,
@@ -112,7 +112,6 @@ impl NebulaContractInstruction {
     const PULSE_ID_ALLOC: usize = 8;
     const SUB_ID_ALLOC: usize = 16;
     const DATA_HASH_ALLOC: usize = 16;
-
 
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -186,7 +185,7 @@ impl NebulaContractInstruction {
                     Self::DATA_HASH_ALLOC,
                     Self::DATA_TYPE_ALLOC_RANGE,
                     Self::PULSE_ID_ALLOC,
-                    Self::SUB_ID_ALLOC
+                    Self::SUB_ID_ALLOC,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
 
@@ -197,14 +196,14 @@ impl NebulaContractInstruction {
                     ranges[3].clone(),
                 );
 
-                let data_value = extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
+                let data_value =
+                    extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
                 let data_value = data_value.to_vec();
 
-                let data_type = DataType::cast_from(extract_from_range(
-                    rest,
-                    data_type,
-                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
-                )?);
+                let data_type =
+                    DataType::cast_from(extract_from_range(rest, data_type, |x: &[u8]| {
+                        u8::from_le_bytes(*array_ref![x, 0, 1])
+                    })?);
                 let new_round = extract_from_range(rest, new_round, |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
