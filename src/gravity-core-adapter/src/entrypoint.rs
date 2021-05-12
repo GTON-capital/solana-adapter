@@ -27,23 +27,26 @@ use crate::gravity::{
 };
 use crate::nebula::instruction::NebulaContractInstruction;
 
-#[cfg(feature = "gravity-contract")]
-use crate::gravity::processor::GravityProcessor;
 #[cfg(feature = "nebula-contract")]
 use crate::nebula::processor::NebulaProcessor;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "gravity-contract")] {
-        fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-            GravityProcessor::process(program_id, accounts, instruction_data)
-        }
-    } else if #[cfg(feature = "nebula-contract")] {
-        fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-            NebulaProcessor::process(program_id, accounts, instruction_data)
-        }
-    } else {
-        panic!("invalid endpoint provided");
-    }
+// cfg_if::cfg_if! {
+//     if #[cfg(feature = "gravity-contract")] {
+//         fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+//             GravityProcessor::process(program_id, accounts, instruction_data)
+//         }
+//     } else if #[cfg(feature = "nebula-contract")] {
+//         fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+//             NebulaProcessor::process(program_id, accounts, instruction_data)
+//         }
+//     } else {
+//         panic!("invalid endpoint provided");
+//     }
+// }
+
+#[cfg(feature = "nebula-contract")]
+fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    NebulaProcessor::process(program_id, accounts, instruction_data)
 }
 
 entrypoint!(process);
