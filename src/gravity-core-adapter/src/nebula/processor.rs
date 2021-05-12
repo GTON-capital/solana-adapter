@@ -54,12 +54,14 @@ impl ContractStateValidator for NebulaStateValidator {
     }
 
     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_non_emptiness(&borrowed_data[..])
     }
 
     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_emptiness(&borrowed_data[..])
