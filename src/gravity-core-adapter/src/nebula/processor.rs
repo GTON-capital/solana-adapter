@@ -83,13 +83,8 @@ impl NebulaProcessor {
 
         let initializer = next_account_info(account_info_iter)?;
 
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        // validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
         NebulaStateValidator::validate_non_initialized(accounts)?;
 
         msg!("instantiating nebula contract");
@@ -108,25 +103,25 @@ impl NebulaProcessor {
         msg!("nebula contract len: {:} \n", NebulaContract::LEN);
         msg!("get packet len: {:} \n", NebulaContract::get_packed_len());
 
-        // msg!("picking multisig account");
-        // let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
+        msg!("picking multisig account");
+        let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        // msg!("initializing multisig program");
-        // let multisig_result = MiscProcessor::process_init_multisig(
-        //     &nebula_contract_multisig_account,
-        //     &initial_oracles,
-        //     oracles_bft,
-        // )?;
-        // msg!("initialized multisig program!");
+        msg!("initializing multisig program");
+        let multisig_result = MiscProcessor::process_init_multisig(
+            &nebula_contract_multisig_account,
+            &initial_oracles,
+            oracles_bft,
+        )?;
+        msg!("initialized multisig program!");
 
-        // nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
-        // // msg!("actual nebula contract len")
-        // msg!("packing nebula contract");
+        nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
+        // msg!("actual nebula contract len")
+        msg!("packing nebula contract");
 
-        // NebulaContract::pack(
-        //     nebula_contract_info,
-        //     &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
-        // )?;
+        NebulaContract::pack(
+            nebula_contract_info,
+            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -140,13 +135,8 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        // validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
         NebulaStateValidator::validate_initialized(accounts)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
@@ -176,7 +166,6 @@ impl NebulaProcessor {
 
         nebula_contract_info.last_round = new_round;
         nebula_contract_info.oracles = new_oracles.to_vec();
-        // nebula_contract_info.rounds_dict[&new_round] = true;
 
         NebulaContract::pack(
             nebula_contract_info,
