@@ -30,7 +30,7 @@ use crate::gravity::{
 };
 use crate::subscriber::luport::{
     instruction::LUPortContractInstruction,
-    state::LUPortContract
+    state::{LUPortContract, RequestAmount}
 };
 
 // use crate::nebula::{
@@ -110,6 +110,32 @@ impl LUPortProcessor {
         Ok(())
     }
 
+    fn process_attach_value(
+        accounts: &[AccountInfo],
+        byte_value: &[u8; 32],
+        _program_id: &Pubkey,
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    fn process_create_transfer_wrap_request(
+        accounts: &[AccountInfo],
+        amount: &RequestAmount,
+        receiver: &String,
+        _program_id: &Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+
+        let initializer = next_account_info(account_info_iter)?;
+
+        let luport_contract_account = next_account_info(account_info_iter)?;
+
+        LUPortStateValidator::validate_initialized(accounts)?;
+
+
+        Ok(())
+    }
+
     pub fn process(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -125,7 +151,21 @@ impl LUPortProcessor {
                 msg!("Instruction: Init LU Port Contract");
 
                 Self::process_init_lu_port(accounts, &nebula_address, &token_address, program_id)
-            }
+            },
+            LUPortContractInstruction::AttachValue {
+                byte_value
+            } => {
+                msg!("Instruction: AttachValue LU Port Contract");
+
+                Self::process_attach_value(accounts, &byte_value, program_id)
+            },
+            LUPortContractInstruction::CreateTransferWrapRequest {
+                amount, receiver
+            } => {
+                msg!("Instruction: CreateTransferWrapRequest LU Port Contract");
+
+                Self::process_create_transfer_wrap_request(accounts, &amount, &receiver, program_id)
+            },
             _ => Err(GravityError::InvalidInstruction.into()),
         }
     }

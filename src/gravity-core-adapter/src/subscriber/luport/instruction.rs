@@ -35,7 +35,7 @@ pub enum LUPortContractInstruction {
     AttachValue {
         byte_value: [u8; 32],
     },
-    CreateTransferUnwrapRequest {
+    CreateTransferWrapRequest {
         amount: RequestAmount,
         receiver: String,
     },
@@ -74,12 +74,12 @@ impl LUPortContractInstruction {
                     byte_value: *array_ref!(rest[0..Self::DATA_HASH_ALLOC], 0, 32)
                 }
             },
-            // CreateTransferUnwrapRequest
+            // CreateTransferWrapRequest
             2 => {
                 let request_amount = *array_ref!(rest[0..Self::REQUEST_AMOUNT_ALLOC], 0, 32);
                 let request_recipient= str::from_utf8(&rest[Self::REQUEST_AMOUNT_ALLOC..]).unwrap();
 
-                Self::CreateTransferUnwrapRequest {
+                Self::CreateTransferWrapRequest {
                     amount: request_amount, receiver: String::from(request_recipient)
                 }
             }
