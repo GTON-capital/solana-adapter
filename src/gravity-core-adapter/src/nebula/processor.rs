@@ -238,9 +238,10 @@ impl NebulaProcessor {
 
     pub fn process_nebula_send_value_to_subs(
         accounts: &[AccountInfo],
-        data_type: DataType,
-        pulse_id: PulseID,
-        subscription_id: SubscriptionID,
+        data_value: &Vec<u8>,
+        data_type: &DataType,
+        pulse_id: &PulseID,
+        subscription_id: &SubscriptionID,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -358,6 +359,7 @@ impl NebulaProcessor {
                 Self::process_nebula_send_hash_value(accounts, data_hash, program_id)
             }
             NebulaContractInstruction::SendValueToSubs {
+                data_value,
                 data_type,
                 pulse_id,
                 subscription_id,
@@ -366,9 +368,10 @@ impl NebulaProcessor {
 
                 Self::process_nebula_send_value_to_subs(
                     accounts,
-                    data_type,
-                    pulse_id,
-                    subscription_id,
+                    &data_value,
+                    &data_type,
+                    &pulse_id,
+                    &subscription_id,
                     program_id,
                 )
             }

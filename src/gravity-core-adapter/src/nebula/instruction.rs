@@ -39,6 +39,7 @@ pub enum NebulaContractInstruction {
         data_hash: Vec<u8>,
     },
     SendValueToSubs {
+        data_value: Vec<u8>,
         data_type: DataType,
         pulse_id: PulseID,
         subscription_id: SubscriptionID,
@@ -81,10 +82,9 @@ impl NebulaContractInstruction {
     const BFT_ALLOC: usize = 1;
     const DATA_TYPE_ALLOC_RANGE: usize = 1;
     const PUBKEY_ALLOC: usize = 32;
-    const ROUND_ALLOC: usize = 8;
+    const PULSE_ID_ALLOC: usize = 8;
+    const SUB_ID_ALLOC: usize = 16;
     const DATA_HASH_ALLOC: usize = 16;
-
-    // pub fn match_instruction_byte_order(instruction: Self)
 
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -127,7 +127,7 @@ impl NebulaContractInstruction {
                 let allocs = vec![
                     Self::BFT_ALLOC,
                     Self::PUBKEY_ALLOC * bft as usize,
-                    Self::ROUND_ALLOC,
+                    Self::PULSE_ID_ALLOC,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
 
@@ -141,6 +141,7 @@ impl NebulaContractInstruction {
                     new_round,
                 }
             }
+            // SendHashValue
             2 => {
                 let allocs = vec![Self::DATA_HASH_ALLOC];
                 let ranges = build_range_from_alloc(&allocs);
@@ -154,24 +155,36 @@ impl NebulaContractInstruction {
             // SendValueToSubs
             3 => {
                 let allocs = vec![
-                    Self::DATA_TYPE_ALLOC_RANGE,
-                    Self::ROUND_ALLOC,
                     Self::DATA_HASH_ALLOC,
+                    Self::DATA_TYPE_ALLOC_RANGE,
+                    Self::PULSE_ID_ALLOC,
+                    Self::SUB_ID_ALLOC,
                 ];
                 let ranges = build_range_from_alloc(&allocs);
 
-                let data_type = DataType::cast_from(extract_from_range(
-                    rest,
+                let (data_value, data_type, new_round, subscription_id) = (
                     ranges[0].clone(),
-                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
-                )?);
-                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                    ranges[1].clone(),
+                    ranges[2].clone(),
+                    ranges[3].clone(),
+                );
+
+                let data_value =
+                    extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
+                let data_value = data_value.to_vec();
+
+                let data_type =
+                    DataType::cast_from(extract_from_range(rest, data_type, |x: &[u8]| {
+                        u8::from_le_bytes(*array_ref![x, 0, 1])
+                    })?);
+                let new_round = extract_from_range(rest, new_round, |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
                 let subscription_id =
-                    extract_from_range(rest, ranges[2].clone(), |x: &[u8]| *array_ref![x, 0, 16])?;
+                    extract_from_range(rest, subscription_id, |x: &[u8]| *array_ref![x, 0, 16])?;
 
                 Self::SendValueToSubs {
+                    data_value,
                     data_type,
                     pulse_id: new_round,
                     subscription_id,
