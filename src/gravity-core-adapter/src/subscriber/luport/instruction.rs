@@ -8,6 +8,7 @@ use solana_program::{
 use spl_token::state::Multisig;
 use std::convert::TryInto;
 use std::ops::Range;
+use std::str;
 use std::slice::SliceIndex;
 
 // use uuid::{Builder as UUIDBuilder, Uuid as UUID};
@@ -32,21 +33,21 @@ pub enum LUPortContractInstruction {
         token_address: Pubkey,
     },
     AttachValue {
-        byte_value: Vec<u8>,
+        byte_value: [u8; 32],
     },
     CreateTransferUnwrapRequest {
         amount: RequestAmount,
         receiver: String,
     },
-    TransferOwnership {
-        new_owner: Pubkey,
-    },
+    // TransferOwnership {
+    //     new_owner: Pubkey,
+    // },
 }
 
 impl LUPortContractInstruction {
-    const DATA_TYPE_ALLOC_RANGE: usize = 1;
     const PUBKEY_ALLOC: usize = 32;
-    const DATA_HASH_ALLOC: usize = 16;
+    const REQUEST_AMOUNT_ALLOC: usize = 32;
+    const DATA_HASH_ALLOC: usize = 32;
 
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -65,6 +66,21 @@ impl LUPortContractInstruction {
                 Self::InitContract {
                     nebula_address,
                     token_address,
+                }
+            },
+            // AttachValue
+            1 => {
+                Self::AttachValue {
+                    byte_value: *array_ref!(rest[0..Self::DATA_HASH_ALLOC], 0, 32)
+                }
+            },
+            // CreateTransferUnwrapRequest
+            2 => {
+                let request_amount = *array_ref!(rest[0..Self::REQUEST_AMOUNT_ALLOC], 0, 32);
+                let request_recipient= str::from_utf8(&rest[Self::REQUEST_AMOUNT_ALLOC..]).unwrap();
+
+                Self::CreateTransferUnwrapRequest {
+                    amount: request_amount, receiver: String::from(request_recipient)
                 }
             }
             _ => return Err(InvalidInstruction.into()),

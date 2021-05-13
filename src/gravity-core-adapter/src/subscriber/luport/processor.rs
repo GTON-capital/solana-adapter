@@ -28,7 +28,10 @@ use crate::gravity::{
     misc::{validate_contract_emptiness, validate_contract_non_emptiness},
     state::GravityContract,
 };
-use crate::subscriber::luport::instruction::LUPortContractInstruction;
+use crate::subscriber::luport::{
+    instruction::LUPortContractInstruction,
+    state::LUPortContract
+};
 
 // use crate::nebula::{
 //     instruction::NebulaContractInstruction,
@@ -55,12 +58,14 @@ impl ContractStateValidator for LUPortStateValidator {
     }
 
     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_non_emptiness(&borrowed_data[..])
     }
-
+    
     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_emptiness(&borrowed_data[..])
@@ -79,6 +84,28 @@ impl LUPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+
+        let luport_contract_account = next_account_info(account_info_iter)?;
+
+        LUPortStateValidator::validate_non_initialized(accounts)?;
+
+        msg!("instantiating lu port contract");
+
+        let mut luport_contract_info = LUPortContract::default();
+
+        luport_contract_info.nebula_address = *nebula_address;
+        luport_contract_info.token_address = *token_address;
+        msg!("instantiated lu port contract");
+
+        msg!("lu port contract len: {:} \n", LUPortContract::LEN);
+        msg!("get packet len: {:} \n", LUPortContract::get_packed_len());
+
+        msg!("packing lu port contract");
+
+        LUPortContract::pack(
+            luport_contract_info,
+            &mut luport_contract_account.try_borrow_mut_data()?[0..LUPortContract::LEN],
+        )?;
 
         Ok(())
     }
