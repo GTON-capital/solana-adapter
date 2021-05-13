@@ -19,6 +19,9 @@ pub enum NebulaError {
     SubscriberValueBeenSent,
     #[error("Invalid subscription id")]
     InvalidSubscriptionID,
+
+    #[error("No such instruction index")]
+    InvalidInstructionIndex
 }
 
 impl From<NebulaError> for ProgramError {

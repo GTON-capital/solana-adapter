@@ -23,6 +23,7 @@ use crate::nebula::state::{DataType, PulseID, SubscriptionID};
 // use hex;
 // use crate::state::misc::WrappedResult;
 use crate::gravity::error::GravityError::InvalidInstruction;
+use crate::nebula::allocs::allocation_by_instruction_index;
 
 pub enum NebulaContractInstruction {
     InitContract {
@@ -106,13 +107,12 @@ mod tests {
 }
 
 impl NebulaContractInstruction {
-    const BFT_ALLOC: usize = 1;
-    const DATA_TYPE_ALLOC_RANGE: usize = 1;
-    const PUBKEY_ALLOC: usize = 32;
-    const PULSE_ID_ALLOC: usize = 8;
-    const SUB_ID_ALLOC: usize = 16;
-    const DATA_HASH_ALLOC: usize = 16;
-
+    pub const BFT_ALLOC: usize = 1;
+    pub const DATA_TYPE_ALLOC_RANGE: usize = 1;
+    pub const PUBKEY_ALLOC: usize = 32;
+    pub const PULSE_ID_ALLOC: usize = 8;
+    pub const SUB_ID_ALLOC: usize = 16;
+    pub const DATA_HASH_ALLOC: usize = 16;
 
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -123,12 +123,7 @@ impl NebulaContractInstruction {
                 let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let allocs = vec![
-                    Self::BFT_ALLOC,
-                    Self::DATA_TYPE_ALLOC_RANGE,
-                    Self::PUBKEY_ALLOC,
-                    Self::PUBKEY_ALLOC * oracles_bft as usize,
-                ];
+                let allocs = allocation_by_instruction_index((*tag).into(), Some(oracles_bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
                 let nebula_data_type = DataType::cast_from(extract_from_range(
                     rest,
@@ -152,11 +147,7 @@ impl NebulaContractInstruction {
                 let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let allocs = vec![
-                    Self::BFT_ALLOC,
-                    Self::PUBKEY_ALLOC * bft as usize,
-                    Self::PULSE_ID_ALLOC,
-                ];
+                let allocs = allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
 
                 let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
@@ -171,7 +162,8 @@ impl NebulaContractInstruction {
             }
             // SendHashValue
             2 => {
-                let allocs = vec![Self::DATA_HASH_ALLOC];
+                // let allocs = vec![Self::DATA_HASH_ALLOC];
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
 
                 let data_hash =
@@ -182,12 +174,7 @@ impl NebulaContractInstruction {
             }
             // SendValueToSubs
             3 => {
-                let allocs = vec![
-                    Self::DATA_HASH_ALLOC,
-                    Self::DATA_TYPE_ALLOC_RANGE,
-                    Self::PULSE_ID_ALLOC,
-                    Self::SUB_ID_ALLOC
-                ];
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
 
                 let (data_value, data_type, new_round, subscription_id) = (
@@ -220,7 +207,8 @@ impl NebulaContractInstruction {
             }
             // Subscribe
             4 => {
-                let allocs = vec![Self::PUBKEY_ALLOC, 1, 8];
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+
                 let built_range = build_range_from_alloc(&allocs);
                 let (address, min_confirmations, reward) = (
                     built_range[0].clone(),
