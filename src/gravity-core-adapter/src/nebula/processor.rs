@@ -54,12 +54,14 @@ impl ContractStateValidator for NebulaStateValidator {
     }
 
     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_non_emptiness(&borrowed_data[..])
     }
 
     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
+        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_emptiness(&borrowed_data[..])
@@ -81,13 +83,8 @@ impl NebulaProcessor {
 
         let initializer = next_account_info(account_info_iter)?;
 
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        // validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
         NebulaStateValidator::validate_non_initialized(accounts)?;
 
         msg!("instantiating nebula contract");
@@ -138,13 +135,8 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        // validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
         NebulaStateValidator::validate_initialized(accounts)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
@@ -174,7 +166,6 @@ impl NebulaProcessor {
 
         nebula_contract_info.last_round = new_round;
         nebula_contract_info.oracles = new_oracles.to_vec();
-        // nebula_contract_info.rounds_dict[&new_round] = true;
 
         NebulaContract::pack(
             nebula_contract_info,
