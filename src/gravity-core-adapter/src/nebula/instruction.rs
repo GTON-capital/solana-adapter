@@ -184,14 +184,14 @@ impl NebulaContractInstruction {
                     ranges[3].clone(),
                 );
 
-                let data_value = extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
+                let data_value =
+                    extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
                 let data_value = data_value.to_vec();
 
-                let data_type = DataType::cast_from(extract_from_range(
-                    rest,
-                    data_type,
-                    |x: &[u8]| u8::from_le_bytes(*array_ref![x, 0, 1]),
-                )?);
+                let data_type =
+                    DataType::cast_from(extract_from_range(rest, data_type, |x: &[u8]| {
+                        u8::from_le_bytes(*array_ref![x, 0, 1])
+                    })?);
                 let new_round = extract_from_range(rest, new_round, |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
