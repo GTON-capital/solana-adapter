@@ -108,25 +108,25 @@ impl NebulaProcessor {
         msg!("nebula contract len: {:} \n", NebulaContract::LEN);
         msg!("get packet len: {:} \n", NebulaContract::get_packed_len());
 
-        msg!("picking multisig account");
-        let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
+        // msg!("picking multisig account");
+        // let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        msg!("initializing multisig program");
-        let multisig_result = MiscProcessor::process_init_multisig(
-            &nebula_contract_multisig_account,
-            &initial_oracles,
-            oracles_bft,
-        )?;
-        msg!("initialized multisig program!");
+        // msg!("initializing multisig program");
+        // let multisig_result = MiscProcessor::process_init_multisig(
+        //     &nebula_contract_multisig_account,
+        //     &initial_oracles,
+        //     oracles_bft,
+        // )?;
+        // msg!("initialized multisig program!");
 
-        nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
-        // msg!("actual nebula contract len")
-        msg!("packing nebula contract");
+        // nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
+        // // msg!("actual nebula contract len")
+        // msg!("packing nebula contract");
 
-        NebulaContract::pack(
-            nebula_contract_info,
-            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
-        )?;
+        // NebulaContract::pack(
+        //     nebula_contract_info,
+        //     &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+        // )?;
 
         Ok(())
     }
