@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::time::{Duration, SystemTime};
 
@@ -62,18 +62,18 @@ pub struct Pulse {
     pub height: u64,
 }
 
-// #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
-// pub struct Oracle<A> {
-//     pub address: A,
-//     pub is_online: bool,
-//     pub id_in_queue: SubscriptionID<'a>,
-// }
+#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+pub struct Oracle<A> {
+    pub address: A,
+    pub is_online: bool,
+    pub id_in_queue: SubscriptionID<'a>,
+}
 
 pub type NebulaQueue<T> = Vec<T>;
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
-    pub rounds_dict: HashMap<PulseID, bool>,
+    pub rounds_dict: BTreeMap<PulseID, bool>,
     subscriptions_queue: NebulaQueue<SubscriptionID>,
     pub oracles: Vec<Pubkey>,
 
@@ -83,12 +83,12 @@ pub struct NebulaContract {
     pub data_type: DataType,
     pub last_round: PulseID,
 
-    // subscription_ids: Vec<SubscriptionID>,
+    subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
-    subscriptions_map: HashMap<SubscriptionID, Subscription>,
-    pulses_map: HashMap<PulseID, Pulse>,
-    is_pulse_sent: HashMap<PulseID, bool>,
+    subscriptions_map: BTreeMap<SubscriptionID, Subscription>,
+    pulses_map: BTreeMap<PulseID, Pulse>,
+    is_pulse_sent: BTreeMap<PulseID, bool>,
 
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
