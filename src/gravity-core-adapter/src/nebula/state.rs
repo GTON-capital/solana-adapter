@@ -62,12 +62,12 @@ pub struct Pulse {
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
-pub struct Oracle<A> {
-    pub address: A,
-    pub is_online: bool,
-    pub id_in_queue: SubscriptionID<'a>,
-}
+// #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+// pub struct Oracle<A> {
+//     pub address: A,
+//     pub is_online: bool,
+//     pub id_in_queue: SubscriptionID<'a>,
+// }
 
 pub type NebulaQueue<T> = Vec<T>;
 
