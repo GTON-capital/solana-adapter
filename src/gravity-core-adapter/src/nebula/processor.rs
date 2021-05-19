@@ -54,14 +54,12 @@ impl ContractStateValidator for NebulaStateValidator {
     }
 
     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_non_emptiness(&borrowed_data[..])
     }
 
     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let accounts = accounts.clone();
         let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
         let borrowed_data = nebula_contract_account.try_borrow_data()?;
         validate_contract_emptiness(&borrowed_data[..])
@@ -85,9 +83,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_non_initialized(accounts)?;
-
-        msg!("instantiating nebula contract");
+        validate_contract_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::default();
 
@@ -97,7 +93,7 @@ impl NebulaProcessor {
 
         nebula_contract_info.oracles = initial_oracles.clone();
         nebula_contract_info.gravity_contract = *gravity_contract_program_id;
-
+        
         msg!("instantiated nebula contract");
 
         msg!("nebula contract len: {:} \n", NebulaContract::LEN);
@@ -115,14 +111,15 @@ impl NebulaProcessor {
         msg!("initialized multisig program!");
 
         nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
-        // msg!("actual nebula contract len")
         msg!("packing nebula contract");
 
+        // return Ok(());
         NebulaContract::pack(
             nebula_contract_info,
             &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
         )?;
 
+        
         Ok(())
     }
 
@@ -132,12 +129,13 @@ impl NebulaProcessor {
         new_round: PulseID,
         program_id: &Pubkey,
     ) -> ProgramResult {
+        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        NebulaStateValidator::validate_initialized(accounts_copy)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -180,12 +178,13 @@ impl NebulaProcessor {
         data_hash: Vec<u8>,
         program_id: &Pubkey,
     ) -> ProgramResult {
+        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        NebulaStateValidator::validate_initialized(accounts_copy)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -235,12 +234,13 @@ impl NebulaProcessor {
         subscription_id: &SubscriptionID,
         program_id: &Pubkey,
     ) -> ProgramResult {
+        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        NebulaStateValidator::validate_initialized(accounts_copy)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -275,12 +275,13 @@ impl NebulaProcessor {
         reward: u64,
         _program_id: &Pubkey,
     ) -> ProgramResult {
+        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        NebulaStateValidator::validate_initialized(accounts_copy)?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],

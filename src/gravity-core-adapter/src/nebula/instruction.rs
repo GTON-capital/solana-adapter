@@ -245,7 +245,7 @@ impl NebulaContractInstruction {
         bft: u8,
     ) -> Result<Vec<Pubkey>, ProgramError> {
         extract_from_range(bytes, range, |x: &[u8]| {
-            let consuls = array_ref![x, 0, 32];
+            let consuls = x[0..32 * bft as usize].to_vec();
             let mut result = vec![];
 
             for i in 0..bft {
