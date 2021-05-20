@@ -5,6 +5,8 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
+    clock::{Clock, Slot},
+    sysvar::Sysvar,
 };
 
 // use solana_client::rpc_client::RpcClient;
@@ -116,7 +118,7 @@ impl NebulaProcessor {
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &accounts[3..].to_vec(),
+            &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
         ) {
             Err(err) => return Err(err),
             _ => {}
@@ -166,11 +168,14 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
+
+        let multisig_owner_keys = &accounts[3..3 + nebula_contract_info.bft as usize].to_vec();
+
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &accounts[3..].to_vec(),
+            &multisig_owner_keys,
         ) {
             Err(err) => return Err(err),
             _ => {}
@@ -180,12 +185,15 @@ impl NebulaProcessor {
 
         let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
 
-        let multisig_owner_keys = &accounts[3..].to_vec();
         let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
             vec![a, x.key.to_bytes().to_vec()].concat()
         });
 
-        let current_block = 0;
+        let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
+        msg!(format!("clock_info: {:}", *clock_info.key).as_str());
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        let current_block = clock.slot;
 
         nebula_contract_info.add_pulse(new_pulse_id, data_hash, current_block)?;
 
@@ -220,7 +228,7 @@ impl NebulaProcessor {
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &accounts[3..].to_vec(),
+            &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
         ) {
             Err(err) => return Err(err),
             _ => {}
