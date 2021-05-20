@@ -127,7 +127,7 @@ impl Pack for NebulaContract {
     const LEN: usize = 2000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        bincode::deserialize(&src[..]).unwrap()
+        Ok(Self::default())
     }
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
