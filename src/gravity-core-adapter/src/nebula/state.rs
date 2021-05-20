@@ -1,5 +1,7 @@
-use std::collections::BTreeMap;
+// use std::collections::BTreeMap;
 use std::fmt;
+use std::marker::PhantomData;
+
 use std::time::{Duration, SystemTime};
 
 use solana_program::{
@@ -18,6 +20,27 @@ use uuid::Uuid;
 
 // extern crate sha2;
 // use sha2::Sha256;
+
+pub trait AbstractHashMap<K, V> {
+    fn insert(&mut self, key: K, val: V) {}
+
+    fn contains_key(&self, key: &K) -> bool {
+        false
+    }
+
+    fn get(&self, key: &K) -> Option<&V> {
+        None
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+pub struct HashMap<K, V> {
+    k: PhantomData<K>,
+    v: PhantomData<V>,
+}
+
+impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
+
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum DataType {
@@ -66,7 +89,7 @@ pub type NebulaQueue<T> = Vec<T>;
 
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
-    pub rounds_dict: BTreeMap<PulseID, bool>,
+    pub rounds_dict: HashMap<PulseID, bool>,
     subscriptions_queue: NebulaQueue<SubscriptionID>,
     pub oracles: Vec<Pubkey>,
 
@@ -79,9 +102,9 @@ pub struct NebulaContract {
     subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
-    subscriptions_map: BTreeMap<SubscriptionID, Subscription>,
-    pulses_map: BTreeMap<PulseID, Pulse>,
-    is_pulse_sent: BTreeMap<PulseID, bool>,
+    subscriptions_map: HashMap<SubscriptionID, Subscription>,
+    pulses_map: HashMap<PulseID, Pulse>,
+    is_pulse_sent: HashMap<PulseID, bool>,
 
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
