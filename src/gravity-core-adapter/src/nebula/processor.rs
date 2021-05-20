@@ -212,7 +212,19 @@ impl NebulaProcessor {
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
+        let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+
+        msg!("checking multisig bft count");
+        match MiscProcessor::validate_owner(
+            program_id,
+            &nebula_contract_multisig_account_pubkey,
+            &nebula_contract_multisig_account,
+            &accounts[3..].to_vec(),
+        ) {
+            Err(err) => return Err(err),
+            _ => {}
+        };
 
         // let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
         // let nebula_contract_multisig_info = rpc_client
@@ -241,7 +253,7 @@ impl NebulaProcessor {
         reward: u64,
         _program_id: &Pubkey,
     ) -> ProgramResult {
-        let accounts_copy = accounts.clone();
+        // let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 

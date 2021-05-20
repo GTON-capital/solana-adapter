@@ -1,4 +1,4 @@
-// use std::collections::BTreeMap;
+// use std::collections::HashMap;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -143,12 +143,6 @@ impl Pack for NebulaContract {
     }
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        // let encoded_nebula: Vec<u8> = bincode::serialize(&self).unwrap();
-        // let nebula_sliced = encoded_nebula.as_slice();
-
-        // for (i, val) in nebula_sliced.iter().enumerate() {
-        //     dst[i] = *val;
-        // }
         let data = self.try_to_vec().unwrap();
         dst[..data.len()].copy_from_slice(&data);
     }
@@ -210,21 +204,23 @@ impl NebulaContract {
         min_confirmations: u8,
         reward: u64,
     ) -> Result<(), NebulaError> {
-        // let subscription = Subscription {
-        //     sender,
-        //     contract_address,
-        //     min_confirmations,
-        //     reward,
-        // };
+        let subscription = Subscription {
+            sender,
+            contract_address,
+            min_confirmations,
+            reward,
+        };
 
-        // let serialized_subscription: Vec<u8> = bincode::serialize(&subscription).unwrap();
+        let data = subscription.try_to_vec().unwrap();
+        let serialized_subscription: &mut [u8] = &mut [data.len() as u8; 0];
+        serialized_subscription[..data.len()].copy_from_slice(&data);
 
-        // let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
-        //     Ok(val) => val,
-        //     Err(_) => return Err(NebulaError::SubscribeFailed),
-        // };
+        let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
+            Ok(val) => val,
+            Err(_) => return Err(NebulaError::SubscribeFailed),
+        };
 
-        // self.subscriptions_map.insert(sub_id, subscription);
+        self.subscriptions_map.insert(sub_id, subscription);
 
         Ok(())
     }
