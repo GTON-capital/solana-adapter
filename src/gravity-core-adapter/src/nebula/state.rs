@@ -95,7 +95,8 @@ impl Sealed for NebulaContract {}
 
 impl IsInitialized for NebulaContract {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        // self.is_initialized
+        return true
     }
 }
 

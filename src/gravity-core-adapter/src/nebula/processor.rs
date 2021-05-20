@@ -36,36 +36,6 @@ use crate::nebula::{
 
 use crate::gravity::{misc::ContractStateValidator, processor::MiscProcessor};
 
-struct NebulaStateValidator;
-
-impl ContractStateValidator for NebulaStateValidator {
-    fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo, ProgramError> {
-        let account_info_iter = &mut accounts.iter();
-
-        let initializer = next_account_info(account_info_iter)?;
-
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let nebula_contract_account = next_account_info(account_info_iter)?;
-
-        Ok(nebula_contract_account.clone())
-    }
-
-    fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        let borrowed_data = nebula_contract_account.try_borrow_data()?;
-        validate_contract_non_emptiness(&borrowed_data[..])
-    }
-
-    fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        let borrowed_data = nebula_contract_account.try_borrow_data()?;
-        validate_contract_emptiness(&borrowed_data[..])
-    }
-}
-
 pub struct NebulaProcessor;
 
 impl NebulaProcessor {
@@ -83,7 +53,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&nebula_contract_account.data.borrow()[..])?;
+        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
         let mut nebula_contract_info = NebulaContract::default();
 
@@ -119,7 +89,6 @@ impl NebulaProcessor {
             &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
         )?;
 
-        
         Ok(())
     }
 
@@ -129,13 +98,15 @@ impl NebulaProcessor {
         new_round: PulseID,
         program_id: &Pubkey,
     ) -> ProgramResult {
-        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts_copy)?;
+        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+
+        msg!(format!("new_oracles: {:}", new_oracles.len()).as_str());
+        msg!(format!("new_round: {:}", new_round).as_str());
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -184,7 +155,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts_copy)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -240,7 +211,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts_copy)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -281,7 +252,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts_copy)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
