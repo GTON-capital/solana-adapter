@@ -17,7 +17,7 @@ pub fn allocation_by_instruction_index(instruction: usize, oracles_bft: Option<u
         1 => {
             vec![
                 NebulaContractInstruction::BFT_ALLOC,
-                NebulaContractInstruction::PUBKEY_ALLOC * oracles_bft.unwrap(),
+                // NebulaContractInstruction::PUBKEY_ALLOC * oracles_bft.unwrap(),
                 NebulaContractInstruction::PULSE_ID_ALLOC,
             ]
         },

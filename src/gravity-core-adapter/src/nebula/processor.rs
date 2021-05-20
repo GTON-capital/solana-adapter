@@ -94,7 +94,6 @@ impl NebulaProcessor {
 
     fn process_update_nebula_contract_oracles(
         accounts: &[AccountInfo],
-        new_oracles: Vec<Pubkey>,
         new_round: PulseID,
         program_id: &Pubkey,
     ) -> ProgramResult {
@@ -105,9 +104,6 @@ impl NebulaProcessor {
 
         validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
-        msg!(format!("new_oracles: {:}", new_oracles.len()).as_str());
-        msg!(format!("new_round: {:}", new_round).as_str());
-
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.data.borrow()[0..NebulaContract::LEN],
         )?;
@@ -115,16 +111,14 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
-        let current_multisig_owners = &accounts[3..];
-
         msg!("checking multisig bft count");
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &current_multisig_owners.to_vec(),
+            &accounts[3..].to_vec(),
         ) {
-            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            Err(err) => return Err(err),
             _ => {}
         };
 
@@ -134,7 +128,11 @@ impl NebulaProcessor {
         }
 
         nebula_contract_info.last_round = new_round;
-        nebula_contract_info.oracles = new_oracles.to_vec();
+
+        let new_oracles: Vec<_> = accounts[3..].to_vec().iter().map(|x| {
+            *x.key
+        }).collect();
+        nebula_contract_info.oracles = new_oracles;
 
         NebulaContract::pack(
             nebula_contract_info,
@@ -149,7 +147,6 @@ impl NebulaProcessor {
         data_hash: Vec<u8>,
         program_id: &Pubkey,
     ) -> ProgramResult {
-        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
@@ -168,16 +165,14 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
-        let current_multisig_owners = &accounts[3..];
-
         msg!("checking multisig bft count");
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &current_multisig_owners.to_vec(),
+            &accounts[3..].to_vec(),
         ) {
-            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            Err(err) => return Err(err),
             _ => {}
         };
 
@@ -185,7 +180,7 @@ impl NebulaProcessor {
 
         let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
 
-        let multisig_owner_keys = &current_multisig_owners.to_vec();
+        let multisig_owner_keys = &accounts[3..].to_vec();
         let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
             vec![a, x.key.to_bytes().to_vec()].concat()
         });
@@ -302,14 +297,12 @@ impl NebulaProcessor {
                 )
             }
             NebulaContractInstruction::UpdateOracles {
-                new_oracles,
                 new_round,
             } => {
                 msg!("Instruction: Update Nebula Oracles");
 
                 Self::process_update_nebula_contract_oracles(
                     accounts,
-                    new_oracles,
                     new_round,
                     program_id,
                 )

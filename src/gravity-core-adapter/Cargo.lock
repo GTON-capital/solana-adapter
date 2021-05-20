@@ -2436,7 +2436,8 @@ name = "solana-gravity-adaptor"
 version = "0.0.1"
 dependencies = [
  "arrayref",
- "bincode",
+ "borsh",
+ "borsh-derive",
  "byteorder",
  "cfg-if 1.0.0",
  "clap",

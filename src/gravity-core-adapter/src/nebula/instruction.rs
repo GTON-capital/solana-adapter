@@ -33,7 +33,6 @@ pub enum NebulaContractInstruction {
         oracles_bft: u8,
     },
     UpdateOracles {
-        new_oracles: Vec<Pubkey>,
         new_round: PulseID,
     },
     SendHashValue {
@@ -150,13 +149,12 @@ impl NebulaContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
 
-                let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
-                let new_round = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
+                // let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
+                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
 
                 Self::UpdateOracles {
-                    new_oracles,
                     new_round,
                 }
             }
