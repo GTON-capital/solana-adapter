@@ -109,7 +109,7 @@ impl NebulaProcessor {
         msg!(format!("new_round: {:}", new_round).as_str());
 
         let mut nebula_contract_info = NebulaContract::unpack(
-            &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
+            &nebula_contract_account.data.borrow()[0..NebulaContract::LEN],
         )?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
@@ -138,7 +138,7 @@ impl NebulaProcessor {
 
         NebulaContract::pack(
             nebula_contract_info,
-            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+            &mut nebula_contract_account.data.borrow_mut()[0..NebulaContract::LEN],
         )?;
 
         Ok(())
