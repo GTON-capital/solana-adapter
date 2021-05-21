@@ -97,6 +97,7 @@ impl NebulaProcessor {
     fn process_update_nebula_contract_oracles(
         accounts: &[AccountInfo],
         new_round: PulseID,
+        new_oracles: Vec<Pubkey>,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -130,10 +131,6 @@ impl NebulaProcessor {
         }
 
         nebula_contract_info.last_round = new_round;
-
-        let new_oracles: Vec<_> = accounts[3..].to_vec().iter().map(|x| {
-            *x.key
-        }).collect();
         nebula_contract_info.oracles = new_oracles;
 
         NebulaContract::pack(
@@ -239,15 +236,14 @@ impl NebulaProcessor {
         //     .get_account(&nebula_contract_multisig_account_pubkey)
         //     .unwrap();
 
-        // let nebula_multisig_info =
-        //     Multisig::unpack(&nebula_contract_multisig_info.data[0..NebulaContract::LEN])?;
+        let nebula_multisig_info = Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
-        // NebulaContract::validate_data_provider(
-        //     nebula_multisig_info.signers.to_vec(),
-        //     initializer.key,
-        // )?;
+        NebulaContract::validate_data_provider(
+            nebula_multisig_info.signers.to_vec(),
+            initializer.key,
+        )?;
 
-        // nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
+        nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
 
         // rpc_client.send_and_confirm
 
@@ -318,12 +314,14 @@ impl NebulaProcessor {
             }
             NebulaContractInstruction::UpdateOracles {
                 new_round,
+                new_oracles,
             } => {
                 msg!("Instruction: Update Nebula Oracles");
 
                 Self::process_update_nebula_contract_oracles(
                     accounts,
                     new_round,
+                    new_oracles,
                     program_id,
                 )
             }

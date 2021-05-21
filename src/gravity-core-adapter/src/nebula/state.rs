@@ -27,7 +27,7 @@ use uuid::Uuid;
 // use sha2::Sha256;
 
 pub trait AbstractHashMap<K, V> {
-    fn insert(&mut self, key: K, val: V) {}
+    fn insert(&mut self, key: &K, val: V) {}
 
     fn contains_key(&self, key: &K) -> bool {
         false
@@ -156,7 +156,7 @@ impl NebulaContract {
         block_number: u64,
     ) -> Result<(), NebulaError> {
         self.pulses_map.insert(
-            new_pulse_id,
+            &new_pulse_id,
             Pulse {
                 data_hash,
                 height: block_number,
@@ -220,7 +220,7 @@ impl NebulaContract {
             Err(_) => return Err(NebulaError::SubscribeFailed),
         };
 
-        self.subscriptions_map.insert(sub_id, subscription);
+        self.subscriptions_map.insert(&sub_id, subscription);
 
         Ok(())
     }
@@ -240,9 +240,9 @@ impl NebulaContract {
 
     pub fn send_value_to_subs(
         &mut self,
-        data_type: DataType,
-        pulse_id: PulseID,
-        subscription_id: SubscriptionID,
+        data_type: &DataType,
+        pulse_id: &PulseID,
+        subscription_id: &SubscriptionID,
     ) -> Result<(), NebulaError> {
         // check is value has been sent
         // if self.subscriptions_map
