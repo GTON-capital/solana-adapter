@@ -1,25 +1,53 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
+
 use std::fmt;
+use std::marker::PhantomData;
+
 use std::time::{Duration, SystemTime};
 
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
+    msg,
+
 };
 
 use crate::gravity::state::PartialStorage;
 use crate::nebula::error::NebulaError;
 
-use bincode;
-use serde::{Deserialize, Serialize};
+// use bincode;
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
+// use serde::{Deserialize, Serialize};
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
 // extern crate sha2;
 // use sha2::Sha256;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub trait AbstractHashMap<K, V> {
+    fn insert(&mut self, key: &K, val: V) {}
+
+    fn contains_key(&self, key: &K) -> bool {
+        false
+    }
+
+    fn get(&self, key: &K) -> Option<&V> {
+        None
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+pub struct HashMap<K, V> {
+    k: Vec<K>,
+    v: Vec<V>,
+}
+
+impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
+
+
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 pub enum DataType {
     Int64,
     String,
@@ -48,7 +76,7 @@ impl DataType {
 pub type SubscriptionID = [u8; 16];
 pub type PulseID = u64;
 
-#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {
     pub sender: Pubkey,
     pub contract_address: Pubkey,
@@ -56,22 +84,15 @@ pub struct Subscription {
     pub reward: u64, // should be 2^256
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
     pub data_hash: Vec<u8>,
     pub height: u64,
 }
 
-// #[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
-// pub struct Oracle<A> {
-//     pub address: A,
-//     pub is_online: bool,
-//     pub id_in_queue: SubscriptionID<'a>,
-// }
-
 pub type NebulaQueue<T> = Vec<T>;
 
-#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
     pub rounds_dict: HashMap<PulseID, bool>,
     subscriptions_queue: NebulaQueue<SubscriptionID>,
@@ -83,7 +104,7 @@ pub struct NebulaContract {
     pub data_type: DataType,
     pub last_round: PulseID,
 
-    // subscription_ids: Vec<SubscriptionID>,
+    subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
     subscriptions_map: HashMap<SubscriptionID, Subscription>,
@@ -102,7 +123,8 @@ impl Sealed for NebulaContract {}
 
 impl IsInitialized for NebulaContract {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        // self.is_initialized
+        return true
     }
 }
 
@@ -110,16 +132,19 @@ impl Pack for NebulaContract {
     const LEN: usize = 2000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        bincode::deserialize(&src[..]).unwrap()
+        let mut mut_src: &[u8] = src;
+        Self::deserialize(&mut mut_src).map_err(|err| {
+            msg!(
+                "Error: failed to deserialize NebulaContract instruction: {}",
+                err
+            );
+            ProgramError::InvalidInstructionData
+        })
     }
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        let encoded_nebula: Vec<u8> = bincode::serialize(&self).unwrap();
-        let nebula_sliced = encoded_nebula.as_slice();
-
-        for (i, val) in nebula_sliced.iter().enumerate() {
-            dst[i] = *val;
-        }
+        let data = self.try_to_vec().unwrap();
+        dst[..data.len()].copy_from_slice(&data);
     }
 }
 
@@ -131,7 +156,7 @@ impl NebulaContract {
         block_number: u64,
     ) -> Result<(), NebulaError> {
         self.pulses_map.insert(
-            new_pulse_id,
+            &new_pulse_id,
             Pulse {
                 data_hash,
                 height: block_number,
@@ -186,14 +211,16 @@ impl NebulaContract {
             reward,
         };
 
-        let serialized_subscription: Vec<u8> = bincode::serialize(&subscription).unwrap();
+        let data = subscription.try_to_vec().unwrap();
+        let serialized_subscription: &mut [u8] = &mut [data.len() as u8; 0];
+        serialized_subscription[..data.len()].copy_from_slice(&data);
 
         let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
             Ok(val) => val,
             Err(_) => return Err(NebulaError::SubscribeFailed),
         };
 
-        self.subscriptions_map.insert(sub_id, subscription);
+        self.subscriptions_map.insert(&sub_id, subscription);
 
         Ok(())
     }
@@ -213,9 +240,9 @@ impl NebulaContract {
 
     pub fn send_value_to_subs(
         &mut self,
-        data_type: DataType,
-        pulse_id: PulseID,
-        subscription_id: SubscriptionID,
+        data_type: &DataType,
+        pulse_id: &PulseID,
+        subscription_id: &SubscriptionID,
     ) -> Result<(), NebulaError> {
         // check is value has been sent
         // if self.subscriptions_map

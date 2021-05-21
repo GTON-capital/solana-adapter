@@ -151,13 +151,13 @@ impl NebulaContractInstruction {
                 let ranges = build_range_from_alloc(&allocs);
 
                 let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
-                let new_round = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
+                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
 
                 Self::UpdateOracles {
-                    new_oracles,
                     new_round,
+                    new_oracles
                 }
             }
             // SendHashValue
@@ -245,7 +245,7 @@ impl NebulaContractInstruction {
         bft: u8,
     ) -> Result<Vec<Pubkey>, ProgramError> {
         extract_from_range(bytes, range, |x: &[u8]| {
-            let consuls = array_ref![x, 32 * bft as usize, 8];
+            let consuls = x[0..32 * bft as usize].to_vec();
             let mut result = vec![];
 
             for i in 0..bft {

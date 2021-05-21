@@ -5,6 +5,8 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
+    clock::{Clock, Slot},
+    sysvar::Sysvar,
 };
 
 // use solana_client::rpc_client::RpcClient;
@@ -36,38 +38,6 @@ use crate::nebula::{
 
 use crate::gravity::{misc::ContractStateValidator, processor::MiscProcessor};
 
-struct NebulaStateValidator;
-
-impl ContractStateValidator for NebulaStateValidator {
-    fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo, ProgramError> {
-        let account_info_iter = &mut accounts.iter();
-
-        let initializer = next_account_info(account_info_iter)?;
-
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let nebula_contract_account = next_account_info(account_info_iter)?;
-
-        Ok(nebula_contract_account.clone())
-    }
-
-    fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let accounts = accounts.clone();
-        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        let borrowed_data = nebula_contract_account.try_borrow_data()?;
-        validate_contract_non_emptiness(&borrowed_data[..])
-    }
-
-    fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult {
-        let accounts = accounts.clone();
-        let nebula_contract_account = Self::extract_account_data(accounts.to_vec())?;
-        let borrowed_data = nebula_contract_account.try_borrow_data()?;
-        validate_contract_emptiness(&borrowed_data[..])
-    }
-}
-
 pub struct NebulaProcessor;
 
 impl NebulaProcessor {
@@ -85,9 +55,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_non_initialized(accounts)?;
-
-        msg!("instantiating nebula contract");
+        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
         let mut nebula_contract_info = NebulaContract::default();
 
@@ -97,7 +65,7 @@ impl NebulaProcessor {
 
         nebula_contract_info.oracles = initial_oracles.clone();
         nebula_contract_info.gravity_contract = *gravity_contract_program_id;
-
+        
         msg!("instantiated nebula contract");
 
         msg!("nebula contract len: {:} \n", NebulaContract::LEN);
@@ -115,9 +83,9 @@ impl NebulaProcessor {
         msg!("initialized multisig program!");
 
         nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
-        // msg!("actual nebula contract len")
         msg!("packing nebula contract");
 
+        // return Ok(());
         NebulaContract::pack(
             nebula_contract_info,
             &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
@@ -128,8 +96,8 @@ impl NebulaProcessor {
 
     fn process_update_nebula_contract_oracles(
         accounts: &[AccountInfo],
-        new_oracles: Vec<Pubkey>,
         new_round: PulseID,
+        new_oracles: Vec<Pubkey>,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -137,25 +105,23 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
-            &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
+            &nebula_contract_account.data.borrow()[0..NebulaContract::LEN],
         )?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
-
-        let current_multisig_owners = &accounts[3..];
 
         msg!("checking multisig bft count");
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &current_multisig_owners.to_vec(),
+            &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
         ) {
-            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            Err(err) => return Err(err),
             _ => {}
         };
 
@@ -165,11 +131,11 @@ impl NebulaProcessor {
         }
 
         nebula_contract_info.last_round = new_round;
-        nebula_contract_info.oracles = new_oracles.to_vec();
+        nebula_contract_info.oracles = new_oracles;
 
         NebulaContract::pack(
             nebula_contract_info,
-            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+            &mut nebula_contract_account.data.borrow_mut()[0..NebulaContract::LEN],
         )?;
 
         Ok(())
@@ -185,7 +151,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -198,16 +164,17 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
-        let current_multisig_owners = &accounts[3..];
-
         msg!("checking multisig bft count");
+
+        let multisig_owner_keys = &accounts[3..3 + nebula_contract_info.bft as usize].to_vec();
+
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
             &nebula_contract_multisig_account,
-            &current_multisig_owners.to_vec(),
+            &multisig_owner_keys,
         ) {
-            Err(_) => return Err(GravityError::InvalidBFTCount.into()),
+            Err(err) => return Err(err),
             _ => {}
         };
 
@@ -215,12 +182,15 @@ impl NebulaProcessor {
 
         let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
 
-        let multisig_owner_keys = &current_multisig_owners.to_vec();
         let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
             vec![a, x.key.to_bytes().to_vec()].concat()
         });
 
-        let current_block = 0;
+        let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
+        msg!(format!("clock_info: {:}", *clock_info.key).as_str());
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        let current_block = clock.slot;
 
         nebula_contract_info.add_pulse(new_pulse_id, data_hash, current_block)?;
 
@@ -235,33 +205,45 @@ impl NebulaProcessor {
         subscription_id: &SubscriptionID,
         program_id: &Pubkey,
     ) -> ProgramResult {
+        let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
+        let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+
+        msg!("checking multisig bft count");
+        match MiscProcessor::validate_owner(
+            program_id,
+            &nebula_contract_multisig_account_pubkey,
+            &nebula_contract_multisig_account,
+            &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
+        ) {
+            Err(err) => return Err(err),
+            _ => {}
+        };
 
         // let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
         // let nebula_contract_multisig_info = rpc_client
         //     .get_account(&nebula_contract_multisig_account_pubkey)
         //     .unwrap();
 
-        // let nebula_multisig_info =
-        //     Multisig::unpack(&nebula_contract_multisig_info.data[0..NebulaContract::LEN])?;
+        let nebula_multisig_info = Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
-        // NebulaContract::validate_data_provider(
-        //     nebula_multisig_info.signers.to_vec(),
-        //     initializer.key,
-        // )?;
+        NebulaContract::validate_data_provider(
+            nebula_multisig_info.signers.to_vec(),
+            initializer.key,
+        )?;
 
-        // nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
+        nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
 
         // rpc_client.send_and_confirm
 
@@ -275,12 +257,13 @@ impl NebulaProcessor {
         reward: u64,
         _program_id: &Pubkey,
     ) -> ProgramResult {
+        // let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        NebulaStateValidator::validate_initialized(accounts)?;
+        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
@@ -330,15 +313,15 @@ impl NebulaProcessor {
                 )
             }
             NebulaContractInstruction::UpdateOracles {
-                new_oracles,
                 new_round,
+                new_oracles,
             } => {
                 msg!("Instruction: Update Nebula Oracles");
 
                 Self::process_update_nebula_contract_oracles(
                     accounts,
-                    new_oracles,
                     new_round,
+                    new_oracles,
                     program_id,
                 )
             }
