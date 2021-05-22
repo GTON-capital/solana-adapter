@@ -21,7 +21,7 @@ pub enum NebulaError {
     InvalidSubscriptionID,
 
     #[error("No such instruction index")]
-    InvalidInstructionIndex
+    InvalidInstructionIndex,
 }
 
 impl From<NebulaError> for ProgramError {

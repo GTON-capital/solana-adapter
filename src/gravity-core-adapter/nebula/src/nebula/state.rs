@@ -6,14 +6,15 @@ use std::marker::PhantomData;
 use std::time::{Duration, SystemTime};
 
 use solana_program::{
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
-    msg,
-
 };
 
-use crate::gravity::state::PartialStorage;
+use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use solana_gravity_contract::gravity::state::PartialStorage;
+
 use crate::nebula::error::NebulaError;
 
 // use bincode;
@@ -46,35 +47,34 @@ pub struct HashMap<K, V> {
 
 impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
 
+// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+// pub enum DataType {
+//     Int64,
+//     String,
+//     Bytes,
+// }
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-pub enum DataType {
-    Int64,
-    String,
-    Bytes,
-}
+// impl Default for DataType {
+//     fn default() -> Self {
+//         DataType::Int64
+//     }
+// }
 
-impl Default for DataType {
-    fn default() -> Self {
-        DataType::Int64
-    }
-}
-
-impl DataType {
-    pub fn cast_from(i: u8) -> DataType {
-        match i {
-            0 => DataType::Int64,
-            1 => DataType::String,
-            2 => DataType::Bytes,
-            _ => panic!("invalid data type"),
-        }
-    }
-}
+// impl DataType {
+//     pub fn cast_from(i: u8) -> DataType {
+//         match i {
+//             0 => DataType::Int64,
+//             1 => DataType::String,
+//             2 => DataType::Bytes,
+//             _ => panic!("invalid data type"),
+//         }
+//     }
+// }
 
 // pub type SubscriptionID<'a> = &'a [u8];
 // pub type SubscriptionID = Vec<u8>;
-pub type SubscriptionID = [u8; 16];
-pub type PulseID = u64;
+// pub type SubscriptionID = [u8; 16];
+// pub type PulseID = u64;
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {
@@ -124,7 +124,7 @@ impl Sealed for NebulaContract {}
 impl IsInitialized for NebulaContract {
     fn is_initialized(&self) -> bool {
         // self.is_initialized
-        return true
+        return true;
     }
 }
 

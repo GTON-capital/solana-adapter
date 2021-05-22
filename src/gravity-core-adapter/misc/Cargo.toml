@@ -1,26 +1,16 @@
 [package]
-name = "solana-gravity-adaptor"
+name = "gravity-misc"
 version = "0.0.1"
-description = "Gravity Protocol adaptor built on Solana"
+description = "Gravity Protocol adapter built on Solana"
 authors = ["Shamil Khalilov <shamfama@gmail.com>"]
 repository = "https://github.com/solana-labs/solana"
 license = "Apache-2.0"
 homepage = "https://gravity.tech"
 edition = "2018"
 
-[features]
-default = ["gravity-contract"]
-gravity = ["gravity-contract", "nebula-contract", "luport-contract"]
-gravity-contract = []
-nebula-contract = []
-luport-contract = []
-no-entrypoint = []
-test-bpf = []
-
 [dependencies]
 byteorder = "1.3"
 solana-program = "=1.6.9"
-# solana-client = "=1.6.9"
 thiserror = "1.0.24"
 spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
