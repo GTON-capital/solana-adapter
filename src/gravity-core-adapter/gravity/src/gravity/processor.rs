@@ -83,10 +83,6 @@ impl GravityProcessor {
 
         let initializer = next_account_info(account_info_iter)?;
 
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
         validate_contract_emptiness(&gravity_contract_account.try_borrow_data()?[..])?;
@@ -98,29 +94,29 @@ impl GravityProcessor {
         gravity_contract_info.bft = bft;
 
         gravity_contract_info.consuls = new_consuls.to_vec();
-        gravity_contract_info.last_round = current_round;
 
-        msg!("checking bft multisignature");
-
-        // msg!("byte array: \n");
-        msg!("gravity contract: {:} \n", gravity_contract_info);
+        msg!("instantiated gravity contract");
 
         msg!("gravity contract len: {:} \n", GravityContract::LEN);
         msg!("get packet len: {:} \n", GravityContract::get_packed_len());
-
-        GravityContract::pack(
-            gravity_contract_info,
-            &mut gravity_contract_account.try_borrow_mut_data()?
-                [GravityContract::store_data_range()],
-        )?;
 
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
         msg!("initializing multisig program");
-        MiscProcessor::process_init_multisig(&gravity_contract_multisig_account, new_consuls, bft)?;
-
+        let multisig_result = MiscProcessor::process_init_multisig(
+            &gravity_contract_multisig_account,
+            &new_consuls,
+            bft,
+        )?;
         msg!("initialized multisig program!");
+
+        gravity_contract_info.multisig_account = *gravity_contract_multisig_account.key;
+
+        GravityContract::pack(
+            gravity_contract_info,
+            &mut gravity_contract_account.try_borrow_mut_data()?[0..GravityContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -152,13 +148,11 @@ impl GravityProcessor {
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
-        let current_multisig_owners = &accounts[3..];
-
         match MiscProcessor::validate_owner(
             program_id,
             &gravity_contract_multisig_account.key,
             &gravity_contract_multisig_account,
-            &current_multisig_owners.to_vec(),
+            &accounts[3..3 + gravity_contract_info.bft as usize].to_vec(),
         ) {
             Err(_) => return Err(GravityError::InvalidBFTCount.into()),
             _ => {}
