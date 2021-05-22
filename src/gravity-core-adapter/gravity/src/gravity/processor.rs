@@ -64,7 +64,7 @@ impl GravityProcessor {
                 msg!("Instruction: Update Gravity Consuls");
 
                 Self::process_update_consuls(accounts, current_round, new_consuls, program_id)
-            } // _ => Err(GravityError::InvalidInstruction.into())
+            }
         }
     }
 
