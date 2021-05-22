@@ -71,9 +71,42 @@ pub type RequestsQueue<T> = Vec<T>;
 pub struct IBPortContract {
     pub nebula_address: Pubkey,
     pub token_address: Pubkey,
+    pub initializer_pubkey: Pubkey,
 
     // pub swap_status: HashMap<u8, RequestStatus>,
     // pub unwrap_requests: HashMap<u8, UnwrapRequest>,
+    // pub requests_queue: RequestsQueue<u8>,
+}
 
 
+impl PartialStorage for IBPortContract {
+    const DATA_RANGE: std::ops::Range<usize> = 0..777;
+}
+
+impl Sealed for IBPortContract {}
+
+impl IsInitialized for IBPortContract {
+    fn is_initialized(&self) -> bool {
+        return true;
+    }
+}
+
+impl Pack for IBPortContract {
+    const LEN: usize = 777;
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let mut mut_src: &[u8] = src;
+        Self::deserialize(&mut mut_src).map_err(|err| {
+            msg!(
+                "Error: failed to deserialize IBPortContract instruction: {}",
+                err
+            );
+            ProgramError::InvalidInstructionData
+        })
+    }
+
+    fn pack_into_slice(&self, dst: &mut [u8]) {
+        let data = self.try_to_vec().unwrap();
+        dst[..data.len()].copy_from_slice(&data);
+    }
 }
