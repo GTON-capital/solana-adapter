@@ -18,7 +18,7 @@ pub enum GravityError {
     InvalidBFTCount,
 
     #[error("Invalid instruction index")]
-    InvalidInstructionIndex
+    InvalidInstructionIndex,
 }
 
 impl From<GravityError> for ProgramError {

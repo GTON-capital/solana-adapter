@@ -1,18 +1,20 @@
 use std::fmt;
 
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
-    msg
 };
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
-#[derive(BorshDeserialize, BorshSchema, BorshSerialize, PartialEq, PartialOrd, Default, Debug, Clone)]
+#[derive(
+    BorshDeserialize, BorshSchema, BorshSerialize, PartialEq, PartialOrd, Default, Debug, Clone,
+)]
 pub struct GravityContract {
-    pub is_initialized: bool,
+    // pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
 
     pub bft: u8,
@@ -25,12 +27,11 @@ impl fmt::Display for GravityContract {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "is_initialized: {:};
-             initializer_pubkey: {:};
+            "initializer_pubkey: {:};
              consuls: {:?};
              bft: {:};
              last_round: {:}",
-            self.is_initialized, self.initializer_pubkey, self.consuls, self.bft, self.last_round
+            self.initializer_pubkey, self.consuls, self.bft, self.last_round
         )
     }
 }
@@ -55,7 +56,7 @@ impl Sealed for GravityContract {}
 
 impl IsInitialized for GravityContract {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        true
     }
 }
 
