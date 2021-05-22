@@ -110,7 +110,7 @@ impl Pack for GravityContract {
 mod tests {
     use super::*;
 
-    use crate::gravity::misc::WrappedResult;
+    use solana_gravity_adapter::misc::WrappedResult;
 
     extern crate hex;
     extern crate rand;

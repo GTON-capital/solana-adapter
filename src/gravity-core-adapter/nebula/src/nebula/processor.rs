@@ -24,19 +24,18 @@ use spl_token::{
 
 use uuid::Uuid;
 
-use crate::gravity::{
+use gravity::{
     error::GravityError,
     instruction::GravityContractInstruction,
-    misc::{validate_contract_emptiness, validate_contract_non_emptiness},
+    misc::{ContractStateValidator, validate_contract_emptiness, validate_contract_non_emptiness},
     state::GravityContract,
+    processor::MiscProcessor
 };
 
 use crate::nebula::{
     instruction::NebulaContractInstruction,
     state::{DataType, NebulaContract, PulseID, SubscriptionID},
 };
-
-use crate::gravity::{misc::ContractStateValidator, processor::MiscProcessor};
 
 pub struct NebulaProcessor;
 

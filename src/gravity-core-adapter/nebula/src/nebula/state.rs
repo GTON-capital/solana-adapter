@@ -10,10 +10,9 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
     msg,
-
 };
 
-use crate::gravity::state::PartialStorage;
+use gravity::state::PartialStorage;
 use crate::nebula::error::NebulaError;
 
 // use bincode;
@@ -47,18 +46,18 @@ pub struct HashMap<K, V> {
 impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
 
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-pub enum DataType {
-    Int64,
-    String,
-    Bytes,
-}
+// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+// pub enum DataType {
+//     Int64,
+//     String,
+//     Bytes,
+// }
 
-impl Default for DataType {
-    fn default() -> Self {
-        DataType::Int64
-    }
-}
+// impl Default for DataType {
+//     fn default() -> Self {
+//         DataType::Int64
+//     }
+// }
 
 impl DataType {
     pub fn cast_from(i: u8) -> DataType {
@@ -73,8 +72,8 @@ impl DataType {
 
 // pub type SubscriptionID<'a> = &'a [u8];
 // pub type SubscriptionID = Vec<u8>;
-pub type SubscriptionID = [u8; 16];
-pub type PulseID = u64;
+// pub type SubscriptionID = [u8; 16];
+// pub type PulseID = u64;
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {

@@ -21,15 +21,17 @@ use spl_token::{
 use crate::gravity::{
     error::GravityError,
     instruction::GravityContractInstruction,
-    misc::{validate_contract_emptiness, validate_contract_non_emptiness},
     state::GravityContract,
     state::PartialStorage,
 };
 
-use crate::nebula::{
-    instruction::NebulaContractInstruction,
-    state::{DataType, NebulaContract, PulseID},
-};
+use misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
+use misc::model::{DataType, PulseID};
+
+// use nebula::{
+//     instruction::NebulaContractInstruction,
+//     state::{DataType, NebulaContract, PulseID},
+// };
 
 pub struct GravityProcessor;
 

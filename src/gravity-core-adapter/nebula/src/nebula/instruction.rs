@@ -16,13 +16,11 @@ use std::slice::SliceIndex;
 use arrayref::{array_ref, array_refs};
 // use hex;
 
-use crate::gravity::misc::extract_from_range;
-
 use crate::nebula::state::{DataType, PulseID, SubscriptionID};
 
 // use hex;
 // use crate::state::misc::WrappedResult;
-use crate::gravity::error::GravityError::InvalidInstruction;
+use gravity::error::GravityError::InvalidInstruction;
 use crate::nebula::allocs::allocation_by_instruction_index;
 
 pub enum NebulaContractInstruction {

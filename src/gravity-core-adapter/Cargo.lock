@@ -1015,6 +1015,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "gravity"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "borsh-derive",
+ "byteorder",
+ "cfg-if 1.0.0",
+ "misc",
+ "serde",
+ "solana-gravity-adapter",
+ "solana-program",
+ "spl-token",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1503,6 +1521,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "misc"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "borsh-derive",
+ "byteorder",
+ "cfg-if 1.0.0",
+ "serde",
+ "solana-gravity-adapter",
+ "solana-program",
+ "spl-token",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "nebula"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "borsh-derive",
+ "byteorder",
+ "cfg-if 1.0.0",
+ "serde",
+ "solana-gravity-adapter",
+ "solana-program",
+ "spl-token",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -2432,7 +2484,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-gravity-adaptor"
+name = "solana-gravity-adapter"
 version = "0.0.1"
 dependencies = [
  "arrayref",

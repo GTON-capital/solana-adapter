@@ -1,0 +1,22 @@
+[package]
+name = "gravity"
+version = "0.1.0"
+authors = ["Shamil Khalilov <shamfama@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+solana-gravity-adapter = { path = "../" }
+misc = { path = "../misc" }
+byteorder = "1.3"
+solana-program = "=1.6.9"
+# solana-client = "=1.6.9"
+thiserror = "1.0.24"
+spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
+arrayref = "0.3.6"
+serde = "1.0.125"
+borsh = "0.8"
+borsh-derive = "0.8.1"
+cfg-if = "1.0.0"
+uuid = { version = "0.8", features = ["v1"] }
