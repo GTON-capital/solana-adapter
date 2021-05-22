@@ -1,3 +1,7 @@
+
+use std::convert::TryInto;
+use std::slice::SliceIndex;
+
 use solana_program::{
     account_info::AccountInfo,
     msg,
@@ -5,15 +9,15 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use arrayref::array_ref;
 use spl_token::state::Multisig;
-use std::convert::TryInto;
-use std::slice::SliceIndex;
+
+use gravity_misc::validation::{extract_from_range, build_range_from_alloc, retrieve_oracles as retrieve_consuls};
 
 use crate::gravity::state::GravityContract;
-
-// use hex;
-// use crate::state::misc::WrappedResult;
 use crate::gravity::error::GravityError::InvalidInstruction;
+use crate::gravity::allocs::allocation_by_instruction_index;
+
 
 pub enum GravityContractInstruction {
     InitContract {
@@ -28,11 +32,11 @@ pub enum GravityContractInstruction {
 }
 
 impl<'a> GravityContractInstruction {
-    const BFT_ALLOC: usize = 1;
-    const PUBKEY_ALLOC: usize = 32;
-    const LAST_ROUND_ALLOC: usize = 8;
+    pub const BFT_ALLOC: usize = 1;
+    pub const PUBKEY_ALLOC: usize = 32;
+    pub const LAST_ROUND_ALLOC: usize = 8;
 
-    const BFT_RANGE: std::ops::Range<usize> = 0..Self::BFT_ALLOC;
+    pub const BFT_RANGE: std::ops::Range<usize> = 0..Self::BFT_ALLOC;
 
     /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
@@ -40,29 +44,40 @@ impl<'a> GravityContractInstruction {
 
         Ok(match tag {
             0 => {
-                let bft: u8 = Self::unpack_bft(rest)?;
-                println!("bft: {:}", bft);
+                let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
+                let allocs =
+                    allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
+                let ranges = build_range_from_alloc(&allocs);
 
-                let mut new_consuls = vec![];
-                Self::unpack_consuls(rest, &mut new_consuls)?;
-                println!("consuls: {:?}", new_consuls);
-
-                let current_round = Self::unpack_round(bft, rest)?;
+                let current_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                    u64::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
+                let initial_consuls = retrieve_consuls(rest, ranges[2].clone(), bft)?;
 
                 Self::InitContract {
-                    current_round: current_round,
-                    new_consuls: new_consuls,
-                    bft: bft,
+                    new_consuls: initial_consuls,
+                    current_round,
+                    bft,
                 }
             }
             1 => {
-                let mut new_consuls = vec![];
-                Self::unpack_consuls(rest, &mut new_consuls)?;
-                println!("consuls: {:?}", new_consuls);
+                let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
+                let allocs =
+                    allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
+                let ranges = build_range_from_alloc(&allocs);
+
+                let current_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                    u64::from_le_bytes(*array_ref![x, 0, 8])
+                })?;
+                let new_consuls = retrieve_consuls(rest, ranges[2].clone(), bft)?;
 
                 Self::UpdateConsuls {
-                    new_consuls: new_consuls,
-                    current_round: Self::unpack_round(1, rest)?,
+                    new_consuls,
+                    current_round,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

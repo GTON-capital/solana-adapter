@@ -4,11 +4,13 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
+    msg
 };
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
-#[derive(PartialEq, PartialOrd, Default, Debug, Clone)]
+#[derive(BorshDeserialize, BorshSchema, BorshSerialize, PartialEq, PartialOrd, Default, Debug, Clone)]
 pub struct GravityContract {
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
@@ -16,7 +18,7 @@ pub struct GravityContract {
     pub bft: u8,
     pub consuls: Vec<Pubkey>,
     pub last_round: u64,
-    // pub multisig_program_id: Pubkey
+    pub multisig_account: Pubkey,
 }
 
 impl fmt::Display for GravityContract {
@@ -46,7 +48,7 @@ pub trait PartialStorage {
 }
 
 impl PartialStorage for GravityContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..74;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1000;
 }
 
 impl Sealed for GravityContract {}
@@ -58,49 +60,22 @@ impl IsInitialized for GravityContract {
 }
 
 impl Pack for GravityContract {
-    const LEN: usize = 74;
+    const LEN: usize = 1000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let src = array_ref![src, 0, GravityContract::LEN];
-        let (is_initialized, initializer_pubkey, bft, consuls, last_round) =
-            array_refs![src, 1, 32, 1, 32 * 1, 8];
-        let is_initialized = is_initialized[0] != 0;
-
-        Ok(GravityContract {
-            is_initialized,
-            initializer_pubkey: Pubkey::new_from_array(*initializer_pubkey),
-            bft: u8::from_le_bytes(*bft),
-            consuls: vec![Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32])],
-            last_round: u64::from_le_bytes(*last_round),
+        let mut mut_src: &[u8] = src;
+        Self::deserialize(&mut mut_src).map_err(|err| {
+            msg!(
+                "Error: failed to deserialize NebulaContract instruction: {}",
+                err
+            );
+            ProgramError::InvalidInstructionData
         })
     }
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        let dst = array_mut_ref![dst, 0, GravityContract::LEN];
-        let (is_initialized_dst, initializer_pubkey_dst, bft_dst, consuls_dst, last_round_dst) =
-            mut_array_refs![dst, 1, 32, 1, 32 * 1, 8];
-
-        let GravityContract {
-            is_initialized,
-            initializer_pubkey,
-            bft,
-            consuls,
-            last_round,
-        } = self;
-
-        is_initialized_dst[0] = *is_initialized as u8;
-        initializer_pubkey_dst.copy_from_slice(initializer_pubkey.as_ref());
-        bft_dst[0] = *bft as u8;
-
-        let consuls_copy = consuls.clone();
-        consuls_dst.copy_from_slice(
-            consuls_copy
-                .iter()
-                .fold(vec![], |acc, x| vec![acc, x.to_bytes().to_vec()].concat())
-                .as_slice(),
-        );
-
-        *last_round_dst = last_round.to_le_bytes();
+        let data = self.try_to_vec().unwrap();
+        dst[..data.len()].copy_from_slice(&data);
     }
 }
 

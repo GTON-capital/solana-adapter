@@ -1,6 +1,6 @@
 
 // use std::collections::HashMap;
-
+use thiserror::Error;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -25,6 +25,19 @@ use uuid::Uuid;
 //     instruction::NebulaContractInstruction,
 //     state::{DataType, NebulaContract, PulseID},
 // };
+
+#[derive(Error, Debug, Copy, Clone)]
+pub enum ValidationError {
+    #[error("Error during extraction")]
+    ExtractionError
+}
+
+impl From<ValidationError> for ProgramError {
+    fn from(e: ValidationError) -> Self {
+        ProgramError::Custom(e as u32)
+    }
+}
+
 
 
 pub type SubscriptionID = [u8; 16];

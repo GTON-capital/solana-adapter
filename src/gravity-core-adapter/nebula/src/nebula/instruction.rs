@@ -10,31 +10,14 @@ use std::convert::TryInto;
 use std::ops::Range;
 use std::slice::SliceIndex;
 
-// use uuid::{Builder as UUIDBuilder, Uuid as UUID};
-// use std::bytes::Bytes;
-
 use arrayref::{array_ref, array_refs};
 // use hex;
 
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
 
-// use hex;
-// use crate::state::misc::WrappedResult;
 use crate::nebula::allocs::allocation_by_instruction_index;
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
-
-pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -> U>(
-    input: &'a [u8],
-    index: std::ops::Range<usize>,
-    f: F,
-) -> Result<U, ProgramError> {
-    let res = input
-        .get(index)
-        .and_then(|slice| slice.try_into().ok())
-        .map(f)
-        .ok_or(InvalidInstruction)?;
-    Ok(res)
-}
 
 pub enum NebulaContractInstruction {
     InitContract {
@@ -61,33 +44,6 @@ pub enum NebulaContractInstruction {
         min_confirmations: u8,
         reward: u64,
     },
-}
-
-fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
-    let mut res = vec![];
-
-    let mut i = 0;
-    let n = allocs.len();
-    let mut start_index = 0;
-
-    while i < n {
-        let current = allocs[i];
-        if i == 0 {
-            let alloc = 0..current;
-            res.push(alloc);
-            start_index = current;
-            i += 1;
-            continue;
-        }
-
-        let alloc = start_index..start_index + current;
-        res.push(alloc);
-        start_index += current;
-
-        i += 1;
-    }
-
-    res
 }
 
 #[cfg(test)]
@@ -145,7 +101,7 @@ impl NebulaContractInstruction {
 
                 let gravity_contract_program_id =
                     extract_from_range(rest, ranges[2].clone(), |x| Pubkey::new(x))?;
-                let initial_oracles = Self::retrieve_oracles(rest, ranges[3].clone(), oracles_bft)?;
+                let initial_oracles = retrieve_oracles(rest, ranges[3].clone(), oracles_bft)?;
 
                 Self::InitContract {
                     nebula_data_type,
@@ -162,7 +118,7 @@ impl NebulaContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
 
-                let new_oracles = Self::retrieve_oracles(rest, ranges[1].clone(), bft)?;
+                let new_oracles = retrieve_oracles(rest, ranges[1].clone(), bft)?;
                 let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
@@ -248,28 +204,6 @@ impl NebulaContractInstruction {
                 }
             }
             _ => return Err(InvalidInstruction.into()),
-        })
-    }
-
-    fn retrieve_oracles(
-        bytes: &[u8],
-        range: std::ops::Range<usize>,
-        bft: u8,
-    ) -> Result<Vec<Pubkey>, ProgramError> {
-        extract_from_range(bytes, range, |x: &[u8]| {
-            let consuls = x[0..32 * bft as usize].to_vec();
-            let mut result = vec![];
-
-            for i in 0..bft {
-                let i = i as usize;
-                result.push(Pubkey::new_from_array(*array_ref![
-                    consuls[i * 32..(i + 1) * 32],
-                    0,
-                    32
-                ]));
-            }
-
-            result
         })
     }
 }
