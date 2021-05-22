@@ -48,7 +48,7 @@ pub trait PartialStorage {
 }
 
 impl PartialStorage for GravityContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..1000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..299;
 }
 
 impl Sealed for GravityContract {}
@@ -60,13 +60,13 @@ impl IsInitialized for GravityContract {
 }
 
 impl Pack for GravityContract {
-    const LEN: usize = 1000;
+    const LEN: usize = 299;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
         Self::deserialize(&mut mut_src).map_err(|err| {
             msg!(
-                "Error: failed to deserialize NebulaContract instruction: {}",
+                "Error: failed to deserialize GravityContract instruction: {}",
                 err
             );
             ProgramError::InvalidInstructionData

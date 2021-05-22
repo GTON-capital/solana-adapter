@@ -51,7 +51,7 @@ impl GravityProcessor {
 
                 Self::process_init_gravity_contract(
                     accounts,
-                    new_consuls.as_slice(),
+                    new_consuls,
                     current_round,
                     bft,
                     program_id,
@@ -74,14 +74,17 @@ impl GravityProcessor {
 
     fn process_init_gravity_contract(
         accounts: &[AccountInfo],
-        new_consuls: &[Pubkey],
+        new_consuls: Vec<Pubkey>,
         current_round: PulseID,
         bft: u8,
         _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-
         let initializer = next_account_info(account_info_iter)?;
+
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
 
@@ -93,7 +96,7 @@ impl GravityProcessor {
         gravity_contract_info.initializer_pubkey = *initializer.key;
         gravity_contract_info.bft = bft;
 
-        gravity_contract_info.consuls = new_consuls.to_vec();
+        gravity_contract_info.consuls = new_consuls.clone();
 
         msg!("instantiated gravity contract");
 
