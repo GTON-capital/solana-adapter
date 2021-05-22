@@ -67,3 +67,26 @@ impl DataType {
         }
     }
 }
+
+
+pub trait AbstractHashMap<K, V> {
+    fn insert(&mut self, key: &K, val: V) {}
+
+    fn contains_key(&self, key: &K) -> bool {
+        false
+    }
+
+    fn get(&self, key: &K) -> Option<&V> {
+        None
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+pub struct HashMap<K, V> {
+    k: Vec<K>,
+    v: Vec<V>,
+}
+
+impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
+
+pub type U256 = [u8; 32];

@@ -12,7 +12,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::model::{DataType, PulseID, SubscriptionID, HashMap, AbstractHashMap};
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use crate::nebula::error::NebulaError;
@@ -27,25 +27,6 @@ use uuid::Uuid;
 // extern crate sha2;
 // use sha2::Sha256;
 
-pub trait AbstractHashMap<K, V> {
-    fn insert(&mut self, key: &K, val: V) {}
-
-    fn contains_key(&self, key: &K) -> bool {
-        false
-    }
-
-    fn get(&self, key: &K) -> Option<&V> {
-        None
-    }
-}
-
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
-pub struct HashMap<K, V> {
-    k: Vec<K>,
-    v: Vec<V>,
-}
-
-impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
 
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 // pub enum DataType {
