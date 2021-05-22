@@ -62,12 +62,8 @@ impl GravityProcessor {
                 new_consuls,
             } => {
                 msg!("Instruction: Update Gravity Consuls");
-                Self::process_update_consuls(
-                    accounts,
-                    current_round,
-                    new_consuls.as_slice(),
-                    program_id,
-                )
+
+                Self::process_update_consuls(accounts, current_round, new_consuls, program_id)
             } // _ => Err(GravityError::InvalidInstruction.into())
         }
     }
@@ -92,7 +88,6 @@ impl GravityProcessor {
 
         let mut gravity_contract_info = GravityContract::default();
 
-        gravity_contract_info.is_initialized = true;
         gravity_contract_info.initializer_pubkey = *initializer.key;
         gravity_contract_info.bft = bft;
 
@@ -127,7 +122,7 @@ impl GravityProcessor {
     pub fn process_update_consuls(
         accounts: &[AccountInfo],
         current_round: u64,
-        new_consuls: &[Pubkey],
+        new_consuls: Vec<Pubkey>,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -138,11 +133,11 @@ impl GravityProcessor {
         }
 
         let gravity_contract_account = next_account_info(account_info_iter)?;
-
+        
         validate_contract_non_emptiness(&gravity_contract_account.try_borrow_data()?[..])?;
 
         let mut gravity_contract_info = GravityContract::unpack(
-            &gravity_contract_account.try_borrow_data()?[GravityContract::store_data_range()],
+            &gravity_contract_account.try_borrow_data()?[0..GravityContract::LEN],
         )?;
         if !gravity_contract_info.is_initialized() {
             return Err(ProgramError::UninitializedAccount);
@@ -166,12 +161,11 @@ impl GravityProcessor {
         }
 
         gravity_contract_info.last_round = current_round;
-        gravity_contract_info.consuls = new_consuls.to_vec();
+        gravity_contract_info.consuls = new_consuls.clone();
 
         GravityContract::pack(
             gravity_contract_info,
-            &mut gravity_contract_account.try_borrow_mut_data()?
-                [GravityContract::store_data_range()],
+            &mut gravity_contract_account.try_borrow_mut_data()?[0..GravityContract::LEN],
         )?;
 
         Ok(())

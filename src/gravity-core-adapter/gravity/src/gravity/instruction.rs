@@ -1,7 +1,7 @@
-
 use std::convert::TryInto;
 use std::slice::SliceIndex;
 
+use arrayref::array_ref;
 use solana_program::{
     account_info::AccountInfo,
     msg,
@@ -9,14 +9,15 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use arrayref::array_ref;
 use spl_token::state::Multisig;
 
-use gravity_misc::validation::{extract_from_range, build_range_from_alloc, retrieve_oracles as retrieve_consuls};
+use gravity_misc::validation::{
+    build_range_from_alloc, extract_from_range, retrieve_oracles as retrieve_consuls,
+};
 
-use crate::gravity::state::GravityContract;
-use crate::gravity::error::GravityError::InvalidInstruction;
 use crate::gravity::allocs::allocation_by_instruction_index;
+use crate::gravity::error::GravityError::InvalidInstruction;
+use crate::gravity::state::GravityContract;
 
 pub enum GravityContractInstruction {
     InitContract {
@@ -43,8 +44,7 @@ impl GravityContractInstruction {
                 let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let allocs =
-                    allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
+                let allocs = allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
 
                 let current_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
@@ -63,8 +63,7 @@ impl GravityContractInstruction {
                 let bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let allocs =
-                    allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
+                let allocs = allocation_by_instruction_index((*tag).into(), Some(bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
 
                 let current_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
@@ -80,5 +79,4 @@ impl GravityContractInstruction {
             _ => return Err(InvalidInstruction.into()),
         })
     }
-
 }
