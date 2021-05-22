@@ -1,11 +1,11 @@
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::{Clock, Slot},
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    clock::{Clock, Slot},
     sysvar::Sysvar,
 };
 
@@ -24,18 +24,15 @@ use spl_token::{
 
 use uuid::Uuid;
 
-use gravity::{
-    error::GravityError,
-    instruction::GravityContractInstruction,
-    misc::{ContractStateValidator, validate_contract_emptiness, validate_contract_non_emptiness},
+use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
+use solana_gravity_contract::gravity::{
+    error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
     state::GravityContract,
-    processor::MiscProcessor
 };
 
-use crate::nebula::{
-    instruction::NebulaContractInstruction,
-    state::{DataType, NebulaContract, PulseID, SubscriptionID},
-};
+use crate::nebula::instruction::NebulaContractInstruction;
+use crate::nebula::state::NebulaContract;
+use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
 pub struct NebulaProcessor;
 
@@ -64,7 +61,7 @@ impl NebulaProcessor {
 
         nebula_contract_info.oracles = initial_oracles.clone();
         nebula_contract_info.gravity_contract = *gravity_contract_program_id;
-        
+
         msg!("instantiated nebula contract");
 
         msg!("nebula contract len: {:} \n", NebulaContract::LEN);
@@ -106,9 +103,8 @@ impl NebulaProcessor {
 
         validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
-        let mut nebula_contract_info = NebulaContract::unpack(
-            &nebula_contract_account.data.borrow()[0..NebulaContract::LEN],
-        )?;
+        let mut nebula_contract_info =
+            NebulaContract::unpack(&nebula_contract_account.data.borrow()[0..NebulaContract::LEN])?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
@@ -235,7 +231,8 @@ impl NebulaProcessor {
         //     .get_account(&nebula_contract_multisig_account_pubkey)
         //     .unwrap();
 
-        let nebula_multisig_info = Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
+        let nebula_multisig_info =
+            Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
         NebulaContract::validate_data_provider(
             nebula_multisig_info.signers.to_vec(),

@@ -16,12 +16,25 @@ use std::slice::SliceIndex;
 use arrayref::{array_ref, array_refs};
 // use hex;
 
-use crate::nebula::state::{DataType, PulseID, SubscriptionID};
+use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
 // use hex;
 // use crate::state::misc::WrappedResult;
-use gravity::error::GravityError::InvalidInstruction;
 use crate::nebula::allocs::allocation_by_instruction_index;
+use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
+
+pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -> U>(
+    input: &'a [u8],
+    index: std::ops::Range<usize>,
+    f: F,
+) -> Result<U, ProgramError> {
+    let res = input
+        .get(index)
+        .and_then(|slice| slice.try_into().ok())
+        .map(f)
+        .ok_or(InvalidInstruction)?;
+    Ok(res)
+}
 
 pub enum NebulaContractInstruction {
     InitContract {
@@ -121,7 +134,8 @@ impl NebulaContractInstruction {
                 let oracles_bft = extract_from_range(rest, 0..1, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let allocs = allocation_by_instruction_index((*tag).into(), Some(oracles_bft as usize))?;
+                let allocs =
+                    allocation_by_instruction_index((*tag).into(), Some(oracles_bft as usize))?;
                 let ranges = build_range_from_alloc(&allocs);
                 let nebula_data_type = DataType::cast_from(extract_from_range(
                     rest,
@@ -155,7 +169,7 @@ impl NebulaContractInstruction {
 
                 Self::UpdateOracles {
                     new_round,
-                    new_oracles
+                    new_oracles,
                 }
             }
             // SendHashValue

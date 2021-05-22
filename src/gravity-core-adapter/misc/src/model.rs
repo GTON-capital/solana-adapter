@@ -27,8 +27,6 @@ use uuid::Uuid;
 // };
 
 
-
-
 pub type SubscriptionID = [u8; 16];
 pub type PulseID = u64;
 
@@ -42,5 +40,17 @@ pub enum DataType {
 impl Default for DataType {
     fn default() -> Self {
         DataType::Int64
+    }
+}
+
+
+impl DataType {
+    pub fn cast_from(i: u8) -> DataType {
+        match i {
+            0 => DataType::Int64,
+            1 => DataType::String,
+            2 => DataType::Bytes,
+            _ => panic!("invalid data type"),
+        }
     }
 }

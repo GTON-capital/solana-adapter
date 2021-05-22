@@ -70,9 +70,7 @@ impl Pack for GravityContract {
             is_initialized,
             initializer_pubkey: Pubkey::new_from_array(*initializer_pubkey),
             bft: u8::from_le_bytes(*bft),
-            consuls: vec![
-                Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32]),
-            ],
+            consuls: vec![Pubkey::new_from_array(*array_ref![consuls[0..32], 0, 32])],
             last_round: u64::from_le_bytes(*last_round),
         })
     }

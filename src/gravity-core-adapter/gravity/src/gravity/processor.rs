@@ -19,14 +19,12 @@ use spl_token::{
 };
 
 use crate::gravity::{
-    error::GravityError,
-    instruction::GravityContractInstruction,
-    state::GravityContract,
+    error::GravityError, instruction::GravityContractInstruction, state::GravityContract,
     state::PartialStorage,
 };
 
-use misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
-use misc::model::{DataType, PulseID};
+use gravity_misc::model::{DataType, PulseID};
+use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
 
 // use nebula::{
 //     instruction::NebulaContractInstruction,

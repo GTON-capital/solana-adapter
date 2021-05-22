@@ -1,17 +1,16 @@
 [package]
-name = "gravity"
-version = "0.1.0"
+name = "solana-gravity-contract"
+version = "0.0.1"
+description = "Gravity Protocol adapter built on Solana"
 authors = ["Shamil Khalilov <shamfama@gmail.com>"]
+repository = "https://github.com/solana-labs/solana"
+license = "Apache-2.0"
+homepage = "https://gravity.tech"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-solana-gravity-adapter = { path = "../" }
-misc = { path = "../misc" }
 byteorder = "1.3"
 solana-program = "=1.6.9"
-# solana-client = "=1.6.9"
 thiserror = "1.0.24"
 spl-token = {version = "3.0.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
@@ -20,3 +19,17 @@ borsh = "0.8"
 borsh-derive = "0.8.1"
 cfg-if = "1.0.0"
 uuid = { version = "0.8", features = ["v1"] }
+# nebula-contract = { version = "0.1.0", path = "../nebula", features = ["no-entrypoint"] }
+gravity-misc = { version = "0.0.1", path = "../misc" }
+
+[dev-dependencies]
+solana-program-test = "=1.6.9"
+solana-sdk = "=1.6.9"
+tokio = "1.5.0"
+rand = "0.8.3"
+hex = "0.4.3"
+sha2 = "0.9.3"
+clap = "2.33.3"
+
+[lib]
+crate-type = ["cdylib", "lib"]

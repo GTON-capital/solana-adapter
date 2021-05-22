@@ -5,8 +5,6 @@ use solana_program::{
 };
 use std::convert::TryInto;
 
-// use self::error::GravityError::InvalidInstruction;
-
 pub type WrappedResult<T> = Result<T, Box<dyn error::Error>>;
 
 // pub trait ContractStateValidator {
@@ -15,3 +13,4 @@ pub type WrappedResult<T> = Result<T, Box<dyn error::Error>>;
 //     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult;
 //     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult;
 // }
+
