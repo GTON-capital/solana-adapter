@@ -36,6 +36,14 @@ pub enum IBPortContractInstruction {
     },
     TransferTokenOwnership {
         new_owner: Pubkey
+    },
+    TestCrossMint {
+        receiver: Pubkey,
+        amount: f64,
+    }
+    TestCrossBurn {
+        receiver: Pubkey,
+        amount: f64,
     }
 }
 
@@ -82,7 +90,7 @@ impl IBPortContractInstruction {
             2 => {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
-                let byte_data = *array_ref![rest[ranges[0].clone()], 0, 64];
+                let byte_data = *array_ref![rest[ranges[0].clone()], 0, 80];
 
                 Self::AttachValue { byte_data }
             }
@@ -93,6 +101,25 @@ impl IBPortContractInstruction {
                 let new_owner = Pubkey::new(&rest[ranges[0].clone()]);
 
                 Self::TransferTokenOwnership { new_owner }
+            },
+            // TestCrossMint
+            4 => {
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                let ranges = build_range_from_alloc(&allocs);
+
+                let receiver = Pubkey::new(&rest[ranges[0].clone()]);
+                let amount = f64::from_le_bytes(*array_ref![rest[ranges[1].clone()], 0, 8]);
+
+                Self::TestCrossMint { receiver, amount }
+            }
+            5 => {
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                let ranges = build_range_from_alloc(&allocs);
+
+                let receiver = Pubkey::new(&rest[ranges[0].clone()]);
+                let amount = f64::from_le_bytes(*array_ref![rest[ranges[1].clone()], 0, 8]);
+
+                Self::TestCrossBurn { receiver, amount }
             }
             _ => return Err(InvalidInstruction.into()),
         })

@@ -87,6 +87,52 @@ pub struct HashMap<K, V> {
     v: Vec<V>,
 }
 
-impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
+impl<K, V> HashMap<K, V> {
+    pub fn len(&self) -> usize {
+        self.k.len()
+    }
+}
+
+impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {
+    fn insert(&mut self, key: &K, val: V) {
+        // if self.k.is_empty() {
+        //     self.k.push(key.clone());
+        //     self.v.push(val.clone());
+        //     return;
+        // }
+
+        // let (insertion_index, is_new) = if self.k.contains(key) {
+
+        // } else {
+
+        // }
+    }
+
+    fn contains_key(&self, key: &K) -> bool {
+        false
+    }
+
+    fn get(&self, key: &K) -> Option<&V> {
+        None
+    }
+}
 
 pub type U256 = [u8; 32];
+
+
+pub fn new_uuid(node_id: &[u8]) -> Uuid {
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+
+    let context = Context::new(777);
+
+    let ts = Timestamp::from_unix(
+        &context,
+        current_time.as_secs(),
+        current_time.subsec_nanos(),
+    );
+
+    let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
+    // let sub_id = uuid.as_bytes();
+    // sub_id
+    uuid
+}

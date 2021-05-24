@@ -12,6 +12,12 @@ pub enum PortError {
     
     #[error("No such instruction index")]
     InvalidInstructionIndex,
+
+    #[error("Access denied")]
+    AccessDenied,
+
+    #[error("Processing requests count hit limit")]
+    TransferRequestsCountLimit,
 }
 
 impl From<PortError> for ProgramError {

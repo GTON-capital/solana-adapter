@@ -167,7 +167,6 @@ impl NebulaContract {
         );
 
         let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
-
         let sub_id = uuid.as_bytes();
 
         // an approach to avoid collision

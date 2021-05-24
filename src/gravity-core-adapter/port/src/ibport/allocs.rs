@@ -22,6 +22,14 @@ pub fn allocation_by_instruction_index(
         3 => vec![
             IBPortContractInstruction::PUBKEY_ALLOC
         ],
+        4 => vec![
+            IBPortContractInstruction::PUBKEY_ALLOC,
+            8,
+        ],
+        5 => vec![
+            IBPortContractInstruction::PUBKEY_ALLOC,
+            8,
+        ],
         _ => return Err(PortError::InvalidInstructionIndex.into()),
     })
 }
