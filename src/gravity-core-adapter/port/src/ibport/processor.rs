@@ -3,7 +3,7 @@ use solana_program::{
     clock::{Clock, Slot},
     entrypoint::ProgramResult,
     msg,
-    program::invoke,
+    program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
@@ -12,9 +12,9 @@ use solana_program::{
 
 use spl_token::{
     error::TokenError,
+    processor::Processor as TokenProcessor,
     instruction::{burn_checked, mint_to_checked, mint_to, set_authority, is_valid_signer_index, TokenInstruction, AuthorityType},
     state::Multisig,
-
 };
 
 use uuid::Uuid;
@@ -253,32 +253,51 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_data_account = next_account_info(account_info_iter)?;
+        // let receiver = next_account_info(account_info_iter)?;
+        let token_data_account = next_account_info(account_info_iter)?;
         // let token_contract_data_account = next_account_info(account_info_iter)?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_data_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        let token = ibport_contract_info.token_address;
-        let owner = ibport_contract_data_account.key;
+        // let token = ibport_contract_info.token_address;
+        // let owner = ibport_contract_data_account.key;
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-        
-        // let instructions = vec![?];
 
-        invoke(
-            &mint_to_checked(
-                &spl_token::id(),
-                &token,
-                &recipient,
-                owner,
-                &[],
-                amount,
-                decimals,
-            ).unwrap(), 
+        TokenProcessor::process_mint_to(
+            &ibport_contract_info.token_address,
             &[
-                ibport_contract_data_account.clone()
-            ]
+                ibport_contract_data_account.clone(),
+                ibport_contract_data_account.clone(),
+                ibport_contract_data_account.clone(),
+            ],
+            amount,
+            Some(decimals)
         )
+        // let signatures: &[&[_]] = &[
+        //     &ibport_contract_data_account.key.to_bytes(),
+        // ];
+
+        // let authority_signature_seeds = [&ibport_contract_data_account.key.to_bytes(), &[ibport_contract_data_account.]];
+        // let signers = &[&authority_signature_seeds[..]];
+
+        // invoke_signed(
+        //     &mint_to_checked(
+        //         &ibport_contract_info.token_address,
+        //         token_data_account.key,
+        //         &recipient,
+        //         ibport_contract_data_account.key,
+        //         &[],
+        //         amount,
+        //         decimals,
+        //     ).unwrap(), 
+        //     &[
+        //         ibport_contract_data_account.clone(),
+        //         // token_data_account.clone(),
+        //     ],
+        //     signers
+        // )
         // process_test_cross_mint
     }
 

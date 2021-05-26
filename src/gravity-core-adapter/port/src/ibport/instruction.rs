@@ -40,7 +40,7 @@ pub enum IBPortContractInstruction {
     TestCrossMint {
         receiver: Pubkey,
         amount: f64,
-    }
+    },
     TestCrossBurn {
         receiver: Pubkey,
         amount: f64,
@@ -101,7 +101,7 @@ impl IBPortContractInstruction {
                 let new_owner = Pubkey::new(&rest[ranges[0].clone()]);
 
                 Self::TransferTokenOwnership { new_owner }
-            },
+            }
             // TestCrossMint
             4 => {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
