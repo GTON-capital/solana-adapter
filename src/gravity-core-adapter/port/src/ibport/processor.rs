@@ -135,17 +135,7 @@ impl IBPortProcessor {
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
         ibport_contract_info.attach_data(byte_data)?;
-        // mint_to(
-        //     &ibport_contract_info.token_address,
-
-        //     // token_program_id: &Pubkey, 
-        //     // mint_pubkey: &Pubkey, 
-        //     // account_pubkey: &Pubkey, 
-        //     // owner_pubkey: &Pubkey, 
-        //     // signer_pubkeys: &[&Pubkey], 
-        //     // amount: u64
-        // );
-
+        
         
         Ok(())
     }
@@ -265,16 +255,38 @@ impl IBPortProcessor {
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-        TokenProcessor::process_mint_to(
-            &ibport_contract_info.token_address,
+        let signatures: &[&[_]] = &[];
+
+        let token_program_id = &spl_token::id();
+        // let token_program_id = ibport_contract_data_account.token_address;
+        let token = token_data_account.key;
+        
+        invoke_signed(
+            &mint_to_checked(
+                &spl_token::id(),
+                &token,
+                &recipient,
+                initializer.key,
+                &[],
+                amount,
+                decimals,
+            )?,
             &[
-                ibport_contract_data_account.clone(),
-                ibport_contract_data_account.clone(),
-                ibport_contract_data_account.clone(),
+                ibport_contract_data_account.clone()
             ],
-            amount,
-            Some(decimals)
+            signatures
         )
+
+        // TokenProcessor::process_mint_to(
+        //     &ibport_contract_info.token_address,
+        //     &[
+        //         ibport_contract_data_account.clone(),
+        //         ibport_contract_data_account.clone(),
+        //         ibport_contract_data_account.clone(),
+        //     ],
+        //     amount,
+        //     Some(decimals)
+        // )
         // let signatures: &[&[_]] = &[
         //     &ibport_contract_data_account.key.to_bytes(),
         // ];
