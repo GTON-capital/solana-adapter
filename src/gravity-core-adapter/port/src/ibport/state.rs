@@ -14,8 +14,10 @@ use solana_program::{
 use spl_token::instruction::mint_to_checked;
 
 use solana_gravity_contract::gravity::state::PartialStorage;
-use gravity_misc::model::{AbstractHashMap, HashMap};
-// use std::collections::BTreeMap as HashMap;
+// use gravity_misc::model::{AbstractHashMap, HashMap};
+use std::collections::BTreeMap as HashMap;
+// use std::collections::HashMap;
+
 
 // use bincode;
 use arrayref::array_ref;
@@ -49,6 +51,7 @@ use gravity_misc::model::{U256, new_uuid};
 // impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
 
 
+
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 pub enum RequestStatus {
     None,
@@ -73,7 +76,7 @@ pub type ForeignAddress = [u8; 32];
 // 32 bytes - receiver
 
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-pub type AttachedData = [u8; 80];
+// pub type AttachedData = [u8; 80];
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 pub struct UnwrapRequest {
@@ -95,7 +98,7 @@ trait RequestCountConstrained {
     fn count_is_below_limit(&self) -> bool {
         let entities = self.count_constrained_entities();
         for x in entities {
-            if x > Self::unprocessed_requests_limit() {
+            if x >= Self::unprocessed_requests_limit() {
                 return false
             }
         }
@@ -103,7 +106,7 @@ trait RequestCountConstrained {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
     pub nebula_address: Pubkey,
     pub token_address: Pubkey,
@@ -115,7 +118,7 @@ pub struct IBPortContract {
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 10;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 15;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         let res = vec![
@@ -176,32 +179,44 @@ impl IBPortContract {
         //     decimals,
         // )?];
 
-
-
         Ok(())
     }
 
-    pub fn attach_data(&mut self, byte_data: &AttachedData) -> Result<(), PortError>  {
+    fn burn(&mut self) -> Result<(), PortError> {
+        Ok(())
+    }
 
-        // // // parse byte array
+    fn validate_requests_count(&self) -> Result<(), PortError> {
+        if !self.count_is_below_limit() {
+            return Err(PortError::TransferRequestsCountLimit);
+        }
+        Ok(())
+    }
+
+    pub fn attach_data(&mut self, byte_data: &Vec<u8>) -> Result<(), PortError>  {
         // let byte_data = byte_data.to_vec();
-        // let mut pos = 0;
-        // while pos < byte_data.len() {
-        //     let action = byte_data[pos];
-        //     pos += 1;
+        let mut pos = 0;
+        
+        /**
+         * We use iterative approach
+         * in order to process all the requests in one invocation
+         */
+        while pos < byte_data.len() {
+            let action = byte_data[pos];
+            pos += 1;
 
-        //     if "m" == std::str::from_utf8(&[action]).unwrap() {
-        //         let swap_id = array_ref![byte_data, pos, 16];
-        //         pos += 16;
-        //         let amount = array_ref![byte_data, pos, 32];
-        //         pos += 32;
-        //         let receiver = array_ref![byte_data, pos, 32];
-        //         pos += 32;
-        //         self.mint(swap_id, amount, &Pubkey::new(&receiver[..]))?;
-        //         continue;
-        //         // return Ok(())
-        //     }
-        // }
+            if "m" == std::str::from_utf8(&[action]).unwrap() {
+                let swap_id = array_ref![byte_data, pos, 16];
+                pos += 16;
+                let amount = array_ref![byte_data, pos, 32];
+                pos += 32;
+                let receiver = array_ref![byte_data, pos, 32];
+                pos += 32;
+                self.mint(swap_id, amount, &Pubkey::new(&receiver[..]))?;
+                continue;
+                // return Ok(())
+            }
+        }
         
 
         Ok(())
@@ -210,14 +225,14 @@ impl IBPortContract {
     pub fn create_transfer_unwrap_request(&mut self, amount: &U256, sender: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         // uint id = uint(keccak256(abi.encodePacked(msg.sender, receiver, block.number, amount)));
         let id = new_uuid(&receiver[0..6]);
+        self.validate_requests_count()?;
 
-        if !self.count_is_below_limit() {
-            return Err(PortError::TransferRequestsCountLimit);
-        }
-
+        // TODO: BURN TOKENS HERE
+        self.burn();
+        
         // self.swap_status
         // self.unwrap_requests.insert(&id.as_bytes(), UnwrapRequest { origin_address: *sender, destination_address: *receiver });
-        // self.swap_status.insert(&id.as_bytes(), RequestStatus.New);
+        self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
 
         // self.requests_queue.push(&id.as_bytes());
 

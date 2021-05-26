@@ -29,7 +29,7 @@ use solana_gravity_contract::gravity::{
 use arrayref::array_ref;
 
 use gravity_misc::model::{U256};
-use crate::ibport::state::{ForeignAddress, AttachedData};
+use crate::ibport::state::ForeignAddress;
 
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
@@ -109,7 +109,7 @@ impl IBPortProcessor {
 
     fn process_attach_value(
         accounts: &[AccountInfo],
-        byte_data: &AttachedData,
+        byte_data: &Vec<u8>,
         _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();

@@ -17,7 +17,7 @@ use gravity_misc::model::{U256};
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
 
 use crate::ibport::allocs::allocation_by_instruction_index;
-use crate::ibport::state::{ForeignAddress, AttachedData};
+use crate::ibport::state::ForeignAddress;
 
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
 
@@ -32,7 +32,8 @@ pub enum IBPortContractInstruction {
         receiver: ForeignAddress
     },
     AttachValue {
-        byte_data: AttachedData
+        // byte_data: AttachedData
+        byte_data: Vec<u8>
     },
     TransferTokenOwnership {
         new_owner: Pubkey
@@ -88,9 +89,10 @@ impl IBPortContractInstruction {
             }
             // AttachValue
             2 => {
-                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
-                let ranges = build_range_from_alloc(&allocs);
-                let byte_data = *array_ref![rest[ranges[0].clone()], 0, 80];
+                // let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                // let ranges = build_range_from_alloc(&allocs);
+                // let byte_data = *array_ref![rest[ranges[0].clone()], 0, 80];
+                let byte_data = rest.to_vec();
 
                 Self::AttachValue { byte_data }
             }
