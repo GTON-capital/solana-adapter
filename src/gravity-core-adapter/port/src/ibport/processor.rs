@@ -243,7 +243,7 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_data_account = next_account_info(account_info_iter)?;
-        // let receiver = next_account_info(account_info_iter)?;
+        let receiver = next_account_info(account_info_iter)?;
         let token_data_account = next_account_info(account_info_iter)?;
         // let token_contract_data_account = next_account_info(account_info_iter)?;
 
@@ -272,7 +272,9 @@ impl IBPortProcessor {
                 decimals,
             )?,
             &[
-                ibport_contract_data_account.clone()
+                initializer.clone(),
+                receiver.clone(),
+                initializer.clone(),
             ],
             signatures
         )
