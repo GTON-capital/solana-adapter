@@ -36,6 +36,11 @@ use crate::ibport::state::IBPortContract;
 use crate::ibport::error::PortError;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
+
+fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[&target_address.to_bytes(), br"mint"], token_program_id)
+}
+
 pub struct IBPortProcessor;
 
 impl IBPortProcessor {
@@ -244,7 +249,7 @@ impl IBPortProcessor {
 
         let ibport_contract_data_account = next_account_info(account_info_iter)?;
         let receiver = next_account_info(account_info_iter)?;
-        let token_data_account = next_account_info(account_info_iter)?;
+        // let token_data_account = next_account_info(account_info_iter)?;
         // let token_contract_data_account = next_account_info(account_info_iter)?;
 
         let mut ibport_contract_info =
@@ -255,28 +260,37 @@ impl IBPortProcessor {
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-        let signatures: &[&[_]] = &[];
+        // let signatures: &[&[_]] = &[];
 
         let token_program_id = &spl_token::id();
         // let token_program_id = ibport_contract_data_account.token_address;
-        let token = token_data_account.key;
-        
+        // let token = token_data_account.key;
+
+        let (mint_address, mint_bump_seed) =
+            get_mint_address_with_seed(ibport_contract_data_account.key, token_program_id);
+
+        let mint_signer_seeds: &[&[_]] = &[
+            &ibport_contract_data_account.key.to_bytes(),
+            br"mint",
+            &[mint_bump_seed],
+        ];
+
         invoke_signed(
             &mint_to_checked(
-                &spl_token::id(),
-                &token,
+                token_program_id,
+                ibport_contract_data_account.key,
                 &recipient,
-                initializer.key,
+                ibport_contract_data_account.key,
                 &[],
                 amount,
                 decimals,
             )?,
             &[
-                initializer.clone(),
+                ibport_contract_data_account.clone(),
                 receiver.clone(),
-                initializer.clone(),
+                ibport_contract_data_account.clone(),
             ],
-            signatures
+            &[&mint_signer_seeds],
         )
 
         // TokenProcessor::process_mint_to(
