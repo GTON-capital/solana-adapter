@@ -235,9 +235,9 @@ impl IBPortProcessor {
     
     fn process_test_cross_mint(
         accounts: &[AccountInfo],
-        recipient: &Pubkey,
+        _recipient: &Pubkey,
         ui_amount: f64,
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -249,6 +249,7 @@ impl IBPortProcessor {
 
         let ibport_contract_data_account = next_account_info(account_info_iter)?;
         let receiver = next_account_info(account_info_iter)?;
+        let token_pda = next_account_info(account_info_iter)?;
         // let token_data_account = next_account_info(account_info_iter)?;
         // let token_contract_data_account = next_account_info(account_info_iter)?;
 
@@ -260,38 +261,63 @@ impl IBPortProcessor {
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-        // let signatures: &[&[_]] = &[];
-
-        let token_program_id = &spl_token::id();
+        // return Ok(());
+        // let token_program_id = &spl_token::id();
         // let token_program_id = ibport_contract_data_account.token_address;
         // let token = token_data_account.key;
 
-        let (mint_address, mint_bump_seed) =
-            get_mint_address_with_seed(ibport_contract_data_account.key, token_program_id);
+        // let (mint_address, mint_bump_seed) =
+        //     get_mint_address_with_seed(ibport_contract_data_account.key, &spl_token::id());
+        // let signatures: &[&[_]] = &[];
 
-        let mint_signer_seeds: &[&[_]] = &[
-            &ibport_contract_data_account.key.to_bytes(),
-            br"mint",
-            &[mint_bump_seed],
-        ];
+        // let mint_signer_seeds: &[&[_]] = &[
+        //     &ibport_contract_data_account.key.to_bytes(),
+        //     br"mint",
+        //     &[mint_bump_seed],
+        // ];
+
+        let (pda, nonce) = Pubkey::find_program_address(&[b"ibporttheminter"], program_id);
+        
+        let token_program_id = &ibport_contract_info.token_address;
 
         invoke_signed(
             &mint_to_checked(
+                // &spl_token::id(),
+                token_pda.key,
                 token_program_id,
-                ibport_contract_data_account.key,
-                &recipient,
+                receiver.key,
                 ibport_contract_data_account.key,
                 &[],
                 amount,
                 decimals,
             )?,
             &[
-                ibport_contract_data_account.clone(),
+                token_pda.clone(),
                 receiver.clone(),
                 ibport_contract_data_account.clone(),
             ],
-            &[&mint_signer_seeds],
-        )
+            // &[&mint_signer_seeds],
+            &[&[&b"ibporttheminter"[..], &[nonce]]],
+
+        )?;
+        Ok(())
+        // invoke_signed(
+        //     &mint_to_checked(
+        //         token_program_id,
+        //         ibport_contract_data_account.key,
+        //         &recipient,
+        //         ibport_contract_data_account.key,
+        //         &[],
+        //         amount,
+        //         decimals,
+        //     )?,
+        //     &[
+        //         ibport_contract_data_account.clone(),
+        //         receiver.clone(),
+        //         ibport_contract_data_account.clone(),
+        //     ],
+        //     &[&mint_signer_seeds],
+        // )
 
         // TokenProcessor::process_mint_to(
         //     &ibport_contract_info.token_address,
