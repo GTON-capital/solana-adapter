@@ -15,6 +15,7 @@ use spl_token::{
     processor::Processor as TokenProcessor,
     instruction::{burn_checked, mint_to_checked, mint_to, set_authority, is_valid_signer_index, TokenInstruction, AuthorityType},
     state::Multisig,
+    state::Account as TokenAccount
 };
 
 use uuid::Uuid;
@@ -233,6 +234,24 @@ impl IBPortProcessor {
         // process_test_cross_mint
     }
     
+    /*
+    > spl-token mint 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7 10 DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq 
+        Minting 10 tokens
+        Token: 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7
+        Recipient: DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq
+        Spl TOKEN: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA 
+
+        token: 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7 
+
+        recipient: DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq 
+
+        config.owner: 2t4FJfcwwtQgVBj2TU89BMJ1pbFXcj9ksZW984q2VgtH 
+
+        amount: 10000000000 
+
+        decimals: 9 
+
+    */
     fn process_test_cross_mint(
         accounts: &[AccountInfo],
         _recipient: &Pubkey,
@@ -247,14 +266,22 @@ impl IBPortProcessor {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
-        let ibport_contract_data_account = next_account_info(account_info_iter)?;
+        let ibport_contract_account = next_account_info(account_info_iter)?;
         let receiver = next_account_info(account_info_iter)?;
-        let token_pda = next_account_info(account_info_iter)?;
+
+        // let temp_token_account_info =
+        //     TokenAccount::unpack(&temp_token_account.data.borrow())?;
+        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibportminter"], program_id);
+        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibportminter"], program_id);
+
+        // let expected_allocated_key =
+        //     Pubkey::create_program_address(&[b"You pass butter", &[instruction_data[0]]], program_id)?;
+
         // let token_data_account = next_account_info(account_info_iter)?;
         // let token_contract_data_account = next_account_info(account_info_iter)?;
 
         let mut ibport_contract_info =
-            IBPortContract::unpack(&ibport_contract_data_account.data.borrow()[0..IBPortContract::LEN])?;
+            IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
         // let token = ibport_contract_info.token_address;
         // let owner = ibport_contract_data_account.key;
@@ -276,30 +303,54 @@ impl IBPortProcessor {
         //     &[mint_bump_seed],
         // ];
 
-        let (pda, nonce) = Pubkey::find_program_address(&[b"ibporttheminter"], program_id);
-        
-        let token_program_id = &ibport_contract_info.token_address;
+        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibporttheminter"], program_id);
 
-        invoke_signed(
+        // let token_program_id = &ibport_contract_info.token_address;
+        let token_program = next_account_info(account_info_iter)?;
+        // let token_deployed_program_id = ibport_contract_info.token_address;
+        let token_recipient_data_account = receiver.key;
+
+        invoke(
             &mint_to_checked(
-                // &spl_token::id(),
-                token_pda.key,
-                token_program_id,
-                receiver.key,
-                ibport_contract_data_account.key,
+                &spl_token::id(),
+                token_program.key,
+                token_recipient_data_account,
+                ibport_contract_account.key,
                 &[],
                 amount,
                 decimals,
             )?,
             &[
-                token_pda.clone(),
+                token_program.clone(),
                 receiver.clone(),
-                ibport_contract_data_account.clone(),
-            ],
-            // &[&mint_signer_seeds],
-            &[&[&b"ibporttheminter"[..], &[nonce]]],
+                ibport_contract_account.clone(),
+            ]
+        );
+        // token_program_id: &Pubkey, 
+        // mint_pubkey: &Pubkey, 
+        // account_pubkey: &Pubkey, 
+        // owner_pubkey: &Pubkey, 
+        // signer_pubkeys: &[&Pubkey], 
+        // amount: u64, 
+        // decimals: u8
 
-        )?;
+        // invoke_signed(
+        //     &mint_to_checked(
+        //         token_program.key,
+        //         receiver.key,
+        //         &pda,
+        //         &[&pda],
+        //         amount,
+        //         decimals,
+        //     )?,
+        //     &[
+        //         pdas_temp_token_account.clone(),
+        //         receiver.clone(),
+        //         ibport_contract_account.clone(),
+        //         token_program.clone(),
+        //     ],
+        //     &[&[&b"ibportminter"[..], &[nonce]]],
+        // )?;
         Ok(())
         // invoke_signed(
         //     &mint_to_checked(

@@ -18,6 +18,8 @@ pub enum PortError {
 
     #[error("Processing requests count hit limit")]
     TransferRequestsCountLimit,
+
+    // #[error("Wrong ")]
 }
 
 impl From<PortError> for ProgramError {
