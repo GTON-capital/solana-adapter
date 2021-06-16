@@ -307,15 +307,16 @@ impl IBPortProcessor {
 
         // let token_program_id = &ibport_contract_info.token_address;
         let token_program = next_account_info(account_info_iter)?;
+        let ibport_contract_account_pda = next_account_info(account_info_iter)?;
         // let token_deployed_program_id = ibport_contract_info.token_address;
         let token_recipient_data_account = receiver.key;
 
-        invoke(
+        invoke_signed(
             &mint_to_checked(
                 &spl_token::id(),
                 token_program.key,
                 token_recipient_data_account,
-                ibport_contract_account.key,
+                ibport_contract_account_pda.key,
                 &[],
                 amount,
                 decimals,
@@ -323,8 +324,14 @@ impl IBPortProcessor {
             &[
                 token_program.clone(),
                 receiver.clone(),
-                ibport_contract_account.clone(),
+                ibport_contract_account_pda.clone(),
+            ],
+            &[
+                &[],
+                &[],
+                &[b"seed"],
             ]
+
         );
         // token_program_id: &Pubkey, 
         // mint_pubkey: &Pubkey, 
