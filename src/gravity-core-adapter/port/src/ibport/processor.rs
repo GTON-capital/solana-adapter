@@ -35,6 +35,7 @@ use crate::ibport::state::ForeignAddress;
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
 use crate::ibport::error::PortError;
+use crate::ibport::bridge::Bridge;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
 
@@ -287,7 +288,18 @@ impl IBPortProcessor {
         // let owner = ibport_contract_data_account.key;
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+        let token_program_id = &ibport_contract_info.token_address;
+        let mint = ibport_contract_account.key;
+        let destination = receiver.key;
 
+        Bridge::wrapped_mint_to(
+            program_id,
+            accounts,
+            token_program_id,
+            mint,
+            destination,
+            amount,
+        );
         // return Ok(());
         // let token_program_id = &spl_token::id();
         // let token_program_id = ibport_contract_data_account.token_address;
@@ -311,106 +323,31 @@ impl IBPortProcessor {
         // let token_deployed_program_id = ibport_contract_info.token_address;
         let token_recipient_data_account = receiver.key;
 
-        invoke_signed(
-            &mint_to_checked(
-                &spl_token::id(),
-                token_program.key,
-                token_recipient_data_account,
-                ibport_contract_account_pda.key,
-                &[],
-                amount,
-                decimals,
-            )?,
-            &[
-                token_program.clone(),
-                receiver.clone(),
-                ibport_contract_account_pda.clone(),
-            ],
-            &[
-                &[],
-                &[],
-                &[b"seed"],
-            ]
+        // Bridge::wrapped_mint_to(
 
-        );
-        // token_program_id: &Pubkey, 
-        // mint_pubkey: &Pubkey, 
-        // account_pubkey: &Pubkey, 
-        // owner_pubkey: &Pubkey, 
-        // signer_pubkeys: &[&Pubkey], 
-        // amount: u64, 
-        // decimals: u8
-
+        // )
         // invoke_signed(
         //     &mint_to_checked(
+        //         &spl_token::id(),
         //         token_program.key,
-        //         receiver.key,
-        //         &pda,
-        //         &[&pda],
+        //         token_recipient_data_account,
+        //         ibport_contract_account_pda.key,
+        //         &[],
         //         amount,
         //         decimals,
         //     )?,
         //     &[
-        //         pdas_temp_token_account.clone(),
-        //         receiver.clone(),
-        //         ibport_contract_account.clone(),
         //         token_program.clone(),
-        //     ],
-        //     &[&[&b"ibportminter"[..], &[nonce]]],
-        // )?;
-        Ok(())
-        // invoke_signed(
-        //     &mint_to_checked(
-        //         token_program_id,
-        //         ibport_contract_data_account.key,
-        //         &recipient,
-        //         ibport_contract_data_account.key,
-        //         &[],
-        //         amount,
-        //         decimals,
-        //     )?,
-        //     &[
-        //         ibport_contract_data_account.clone(),
         //         receiver.clone(),
-        //         ibport_contract_data_account.clone(),
+        //         ibport_contract_account_pda.clone(),
         //     ],
-        //     &[&mint_signer_seeds],
-        // )
-
-        // TokenProcessor::process_mint_to(
-        //     &ibport_contract_info.token_address,
         //     &[
-        //         ibport_contract_data_account.clone(),
-        //         ibport_contract_data_account.clone(),
-        //         ibport_contract_data_account.clone(),
-        //     ],
-        //     amount,
-        //     Some(decimals)
-        // )
-        // let signatures: &[&[_]] = &[
-        //     &ibport_contract_data_account.key.to_bytes(),
-        // ];
-
-        // let authority_signature_seeds = [&ibport_contract_data_account.key.to_bytes(), &[ibport_contract_data_account.]];
-        // let signers = &[&authority_signature_seeds[..]];
-
-        // invoke_signed(
-        //     &mint_to_checked(
-        //         &ibport_contract_info.token_address,
-        //         token_data_account.key,
-        //         &recipient,
-        //         ibport_contract_data_account.key,
         //         &[],
-        //         amount,
-        //         decimals,
-        //     ).unwrap(), 
-        //     &[
-        //         ibport_contract_data_account.clone(),
-        //         // token_data_account.clone(),
-        //     ],
-        //     signers
-        // )
-        // process_test_cross_mint
+        //         &[],
+        //         &[b"seed"],
+        //     ]
+        // );
+        Ok(())
     }
 
     pub fn process(
