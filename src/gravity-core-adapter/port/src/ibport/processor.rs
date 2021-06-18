@@ -287,7 +287,7 @@ impl IBPortProcessor {
             mint,
             destination,
             amount,
-        );
+        )?;
         
         Ok(())
     }
