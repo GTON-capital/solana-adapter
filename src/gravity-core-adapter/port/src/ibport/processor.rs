@@ -270,24 +270,13 @@ impl IBPortProcessor {
         let ibport_contract_account = next_account_info(account_info_iter)?;
         let receiver = next_account_info(account_info_iter)?;
 
-        // let temp_token_account_info =
-        //     TokenAccount::unpack(&temp_token_account.data.borrow())?;
-        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibportminter"], program_id);
-        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibportminter"], program_id);
-
-        // let expected_allocated_key =
-        //     Pubkey::create_program_address(&[b"You pass butter", &[instruction_data[0]]], program_id)?;
-
-        // let token_data_account = next_account_info(account_info_iter)?;
-        // let token_contract_data_account = next_account_info(account_info_iter)?;
-
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        // let token = ibport_contract_info.token_address;
-        // let owner = ibport_contract_data_account.key;
         let decimals = 8;
-        let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+        let base: u64 = 10;
+        let amount: u64 = (ui_amount as u64) * (base.pow(8));
+
         let token_program_id = &ibport_contract_info.token_address;
         let mint = ibport_contract_account.key;
         let destination = receiver.key;
@@ -300,53 +289,7 @@ impl IBPortProcessor {
             destination,
             amount,
         );
-        // return Ok(());
-        // let token_program_id = &spl_token::id();
-        // let token_program_id = ibport_contract_data_account.token_address;
-        // let token = token_data_account.key;
-
-        // let (mint_address, mint_bump_seed) =
-        //     get_mint_address_with_seed(ibport_contract_data_account.key, &spl_token::id());
-        // let signatures: &[&[_]] = &[];
-
-        // let mint_signer_seeds: &[&[_]] = &[
-        //     &ibport_contract_data_account.key.to_bytes(),
-        //     br"mint",
-        //     &[mint_bump_seed],
-        // ];
-
-        // let (pda, nonce) = Pubkey::find_program_address(&[b"ibporttheminter"], program_id);
-
-        // let token_program_id = &ibport_contract_info.token_address;
-        let token_program = next_account_info(account_info_iter)?;
-        let ibport_contract_account_pda = next_account_info(account_info_iter)?;
-        // let token_deployed_program_id = ibport_contract_info.token_address;
-        let token_recipient_data_account = receiver.key;
-
-        // Bridge::wrapped_mint_to(
-
-        // )
-        // invoke_signed(
-        //     &mint_to_checked(
-        //         &spl_token::id(),
-        //         token_program.key,
-        //         token_recipient_data_account,
-        //         ibport_contract_account_pda.key,
-        //         &[],
-        //         amount,
-        //         decimals,
-        //     )?,
-        //     &[
-        //         token_program.clone(),
-        //         receiver.clone(),
-        //         ibport_contract_account_pda.clone(),
-        //     ],
-        //     &[
-        //         &[],
-        //         &[],
-        //         &[b"seed"],
-        //     ]
-        // );
+        
         Ok(())
     }
 

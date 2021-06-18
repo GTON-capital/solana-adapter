@@ -119,7 +119,7 @@ impl NebulaContractInstruction {
                 let ranges = build_range_from_alloc(&allocs);
 
                 let new_oracles = retrieve_oracles(rest, ranges[1].clone(), bft)?;
-                let new_round = extract_from_range(rest, ranges[1].clone(), |x: &[u8]| {
+                let new_round = extract_from_range(rest, ranges[2].clone(), |x: &[u8]| {
                     PulseID::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
 
