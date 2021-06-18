@@ -276,14 +276,14 @@ impl IBPortProcessor {
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
     
-        let token_program_id = &ibport_contract_info.token_address;
+        // let token_program_id = &ibport_contract_info.token_address;
         let mint = ibport_contract_account.key;
         let destination = receiver.key;
 
         Bridge::wrapped_mint_to(
             program_id,
             accounts,
-            token_program_id,
+            &spl_token::id(),
             mint,
             destination,
             amount,
