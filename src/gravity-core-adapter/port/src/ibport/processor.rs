@@ -274,9 +274,8 @@ impl IBPortProcessor {
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
         let decimals = 8;
-        let base: u64 = 10;
-        let amount: u64 = (ui_amount as u64) * (base.pow(8));
-
+        let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+    
         let token_program_id = &ibport_contract_info.token_address;
         let mint = ibport_contract_account.key;
         let destination = receiver.key;
