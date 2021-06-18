@@ -268,7 +268,9 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-        let receiver = next_account_info(account_info_iter)?;
+        let receiver_account = next_account_info(account_info_iter)?;
+        let token_common_info_data_account = next_account_info(account_info_iter)?;
+        let ibport_program_id_account = next_account_info(account_info_iter)?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
@@ -276,17 +278,26 @@ impl IBPortProcessor {
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
     
-        // let token_program_id = &ibport_contract_info.token_address;
-        let mint = ibport_contract_account.key;
-        let destination = receiver.key;
-
-        Bridge::wrapped_mint_to(
-            program_id,
-            accounts,
-            &spl_token::id(),
-            mint,
-            destination,
-            amount,
+        invoke_signed(
+            &mint_to_checked(
+                &spl_token::id(),
+                token_common_info_data_account.key,
+                receiver_account.key,
+                ibport_program_id_account.key,
+                &[],
+                amount,
+                decimals,
+            ).unwrap(), 
+            &[
+                token_common_info_data_account.clone(),
+                receiver_account.clone(),
+                ibport_program_id_account.clone()
+            ],
+            &[
+                &[],
+                &[],
+                &[b"ibport"]
+            ]
         )?;
         
         Ok(())
