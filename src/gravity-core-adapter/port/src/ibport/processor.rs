@@ -13,7 +13,7 @@ use solana_program::{
 use spl_token::{
     error::TokenError,
     processor::Processor as TokenProcessor,
-    instruction::{burn_checked, mint_to_checked, mint_to, set_authority, is_valid_signer_index, TokenInstruction, AuthorityType},
+    instruction::{burn_checked, burn, mint_to, set_authority, is_valid_signer_index, TokenInstruction, AuthorityType},
     state::Multisig,
     state::Account as TokenAccount
 };
@@ -194,9 +194,9 @@ impl IBPortProcessor {
 
     fn process_test_cross_burn(
         accounts: &[AccountInfo],
-        recipient: &Pubkey,
+        _recipient: &Pubkey,
         ui_amount: f64,
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -206,33 +206,42 @@ impl IBPortProcessor {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
-        let ibport_contract_data_account = next_account_info(account_info_iter)?;
+        let ibport_contract_account = next_account_info(account_info_iter)?;
 
         let mut ibport_contract_info =
-            IBPortContract::unpack(&ibport_contract_data_account.data.borrow()[0..IBPortContract::LEN])?;
+            IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        let token = ibport_contract_info.token_address;
-        let owner = ibport_contract_data_account.key;
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-        
-        // let instructions = vec![?];
 
-        invoke(
-            &burn_checked(
-                &spl_token::id(),
-                &token,
-                &recipient,
-                owner,
-                &[],
-                amount,
-                decimals,
-            ).unwrap(), 
+        // Get the accounts to mint
+        let token_program_id = next_account_info(account_info_iter)?;
+        let mint = next_account_info(account_info_iter)?;
+        let token_holder = next_account_info(account_info_iter)?;
+        let pda_account = next_account_info(account_info_iter)?;
+        msg!("Creating burn instruction");
+
+        let burn_ix = burn(
+            &token_program_id.key,
+            &token_holder.key,
+            &mint.key,
+            &pda_account.key,
+            &[],
+            amount,
+        )?;
+
+        invoke_signed(
+            &burn_ix,
             &[
-                ibport_contract_data_account.clone()
-            ]
-        )
-        // process_test_cross_mint
+                token_holder.clone(),
+                mint.clone(),
+                pda_account.clone(),
+                token_program_id.clone(),
+            ],
+            &[&[&b"ibport"[..]]],
+        )?;
+
+        Ok(())
     }
     
     /*
@@ -268,38 +277,48 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-        let receiver_account = next_account_info(account_info_iter)?;
-        let token_common_info_data_account = next_account_info(account_info_iter)?;
-        let ibport_program_id_account = next_account_info(account_info_iter)?;
 
+        msg!(format!("initializer: {:} \n", initializer.key).as_str());
+        msg!(format!("ibport_contract_account: {:} \n", ibport_contract_account.key).as_str());
+        
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
         let decimals = 8;
         let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-    
-        invoke_signed(
-            &mint_to_checked(
-                &spl_token::id(),
-                token_common_info_data_account.key,
-                receiver_account.key,
-                ibport_program_id_account.key,
-                &[],
-                amount,
-                decimals,
-            ).unwrap(), 
-            &[
-                token_common_info_data_account.clone(),
-                receiver_account.clone(),
-                ibport_program_id_account.clone()
-            ],
-            &[
-                &[],
-                &[],
-                &[b"ibport"]
-            ]
+
+        // Get the accounts to mint
+        let token_program_id = next_account_info(account_info_iter)?;
+        let mint = next_account_info(account_info_iter)?;
+        let recipient_account = next_account_info(account_info_iter)?;
+        let pda_account = next_account_info(account_info_iter)?;
+        msg!("Creating mint instruction");
+
+        let mint_ix = mint_to(
+            &token_program_id.key,
+            &mint.key,
+            &recipient_account.key,
+            &pda_account.key,
+            &[],
+            amount,
         )?;
-        
+
+        msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
+        msg!(format!("mint: {:} \n", mint.key).as_str());
+        msg!(format!("recipient_account: {:} \n", recipient_account.key).as_str());
+        msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
+
+        invoke_signed(
+            &mint_ix,
+            &[
+                mint.clone(),
+                recipient_account.clone(),
+                pda_account.clone(),
+                token_program_id.clone(),
+            ],
+            &[&[&b"ibport"[..]]],
+        )?;
+
         Ok(())
     }
 
