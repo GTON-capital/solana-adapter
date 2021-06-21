@@ -116,7 +116,6 @@ impl IBPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let token_holder = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
-        // msg!("Creating mint instruction");
 
         let burn_ix = burn(
             &token_program_id.key,
@@ -127,11 +126,10 @@ impl IBPortProcessor {
             amount,
         )?;
 
-        
-        // msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
-        // msg!(format!("mint: {:} \n", mint.key).as_str());
-        // msg!(format!("token_holder: {:} \n", token_holder.key).as_str());
-        // msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
+        msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
+        msg!(format!("mint: {:} \n", mint.key).as_str());
+        msg!(format!("token_holder: {:} \n", token_holder.key).as_str());
+        msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
 
         invoke_signed(
             &burn_ix,
@@ -144,12 +142,12 @@ impl IBPortProcessor {
             &[&[&b"ibport"[..]]],
         )?;
 
-        ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
+        // ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
 
-        IBPortContract::pack(
-            ibport_contract_info,
-            &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
-        )?;
+        // IBPortContract::pack(
+        //     ibport_contract_info,
+        //     &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
+        // )?;
 
         Ok(())
     }
@@ -189,29 +187,29 @@ impl IBPortProcessor {
         let pda_account = next_account_info(account_info_iter)?;
         msg!("Creating mint instruction");
 
-        // let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
-        //     let mint_ix = mint_to(
-        //         &token_program_id.key,
-        //         &mint.key,
-        //         &recipient_account.key,
-        //         &pda_account.key,
-        //         &[],
-        //         amount,
-        //     )?;
+        let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
+            let mint_ix = mint_to(
+                &token_program_id.key,
+                &mint.key,
+                &recipient_account.key,
+                &pda_account.key,
+                &[],
+                amount,
+            )?;
 
-        //     invoke_signed(
-        //         &mint_ix,
-        //         &[
-        //             mint.clone(),
-        //             recipient_account.clone(),
-        //             pda_account.clone(),
-        //             token_program_id.clone(),
-        //         ],
-        //         &[&[&b"ibport"[..]]],
-        //     )?;
+            invoke_signed(
+                &mint_ix,
+                &[
+                    mint.clone(),
+                    recipient_account.clone(),
+                    pda_account.clone(),
+                    token_program_id.clone(),
+                ],
+                &[&[&b"ibport"[..]]],
+            )?;
 
-        //     Ok(())
-        // };
+            Ok(())
+        };
 
         // ibport_contract_info.attach_data(byte_data, &mint_callback)?;
 
@@ -419,17 +417,17 @@ impl IBPortProcessor {
                     program_id,
                 )
             }
-            IBPortContractInstruction::TransferTokenOwnership {
-                new_owner
-            } => {
-                msg!("Instruction: TransferTokenOwnership");
+            // IBPortContractInstruction::TransferTokenOwnership {
+            //     new_owner
+            // } => {
+            //     msg!("Instruction: TransferTokenOwnership");
 
-                Self::process_transfer_token_ownership(
-                    accounts,
-                    &new_owner,
-                    program_id,
-                )
-            },
+            //     Self::process_transfer_token_ownership(
+            //         accounts,
+            //         &new_owner,
+            //         program_id,
+            //     )
+            // },
             // IBPortContractInstruction::TestCrossMint {
             //     receiver,
             //     amount

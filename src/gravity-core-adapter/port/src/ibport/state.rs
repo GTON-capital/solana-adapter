@@ -17,8 +17,6 @@ use spl_token::instruction::mint_to_checked;
 use solana_gravity_contract::gravity::state::PartialStorage;
 use gravity_misc::model::{AbstractHashMap, HashMap};
 // use std::collections::BTreeMap as HashMap;
-// use std::collections::HashMap;
-
 
 // use bincode;
 use arrayref::array_ref;
@@ -30,27 +28,6 @@ use uuid::Uuid;
 use crate::ibport::error::PortError;
 
 use gravity_misc::model::{U256, new_uuid};
-
-// pub trait AbstractHashMap<K, V> {
-//     fn insert(&mut self, key: &K, val: V) {}
-
-//     fn contains_key(&self, key: &K) -> bool {
-//         false
-//     }
-
-//     fn get(&self, key: &K) -> Option<&V> {
-//         None
-//     }
-// }
-
-// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
-// pub struct HashMap<K, V> {
-//     k: Vec<K>,
-//     v: Vec<V>,
-// }
-
-// impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {}
-
 
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
@@ -131,7 +108,7 @@ impl RequestCountConstrained for IBPortContract {
 }
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..777;
+    const DATA_RANGE: std::ops::Range<usize> = 0..500;
 }
 
 impl Sealed for IBPortContract {}
@@ -143,7 +120,7 @@ impl IsInitialized for IBPortContract {
 }
 
 impl Pack for IBPortContract {
-    const LEN: usize = 777;
+    const LEN: usize = 500;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
