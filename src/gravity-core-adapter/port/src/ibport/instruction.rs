@@ -28,7 +28,7 @@ pub enum IBPortContractInstruction {
         token_address: Pubkey,
     },
     CreateTransferUnwrapRequest {
-        amount: U256,
+        amount: f64,
         receiver: ForeignAddress
     },
     AttachValue {
@@ -50,7 +50,7 @@ pub enum IBPortContractInstruction {
 
 impl IBPortContractInstruction {
     pub const PUBKEY_ALLOC: usize = 32;
-    pub const DEST_AMOUNT_ALLOC: usize = 32;
+    pub const DEST_AMOUNT_ALLOC: usize = 8;
     pub const FOREIGN_ADDRESS_ALLOC: usize = 32;
     pub const ATTACHED_DATA_ALLOC: usize = 64;
 
@@ -78,7 +78,7 @@ impl IBPortContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
                 let (amount, receiver) = (
-                    *array_ref![rest[ranges[1].clone()], 0, 32],
+                    f64::from_le_bytes(*array_ref![rest[ranges[0].clone()], 0, 8]),
                     *array_ref![rest[ranges[1].clone()], 0, 32]
                 );
 

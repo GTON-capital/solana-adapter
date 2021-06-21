@@ -12,50 +12,17 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use gravity_misc::model::{DataType, PulseID, SubscriptionID, HashMap, AbstractHashMap};
+use std::collections::BTreeMap as HashMap;
+use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use crate::nebula::error::NebulaError;
 
-// use bincode;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
-// use serde::{Deserialize, Serialize};
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
-// extern crate sha2;
-// use sha2::Sha256;
-
-
-// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-// pub enum DataType {
-//     Int64,
-//     String,
-//     Bytes,
-// }
-
-// impl Default for DataType {
-//     fn default() -> Self {
-//         DataType::Int64
-//     }
-// }
-
-// impl DataType {
-//     pub fn cast_from(i: u8) -> DataType {
-//         match i {
-//             0 => DataType::Int64,
-//             1 => DataType::String,
-//             2 => DataType::Bytes,
-//             _ => panic!("invalid data type"),
-//         }
-//     }
-// }
-
-// pub type SubscriptionID<'a> = &'a [u8];
-// pub type SubscriptionID = Vec<u8>;
-// pub type SubscriptionID = [u8; 16];
-// pub type PulseID = u64;
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
 pub struct Subscription {

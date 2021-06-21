@@ -19,6 +19,9 @@ pub enum PortError {
     #[error("Processing requests count hit limit")]
     TransferRequestsCountLimit,
 
+    #[error("Invalid token on request create")]
+    InvalidInputToken,
+
     // #[error("Wrong ")]
 }
 

@@ -80,6 +80,7 @@ pub type ForeignAddress = [u8; 32];
 pub struct UnwrapRequest {
     pub destination_address: ForeignAddress,
     pub origin_address: Pubkey,
+    pub amount: u64
 }
 
 pub type RequestsQueue<T> = Vec<T>;
@@ -111,7 +112,7 @@ pub struct IBPortContract {
     pub initializer_pubkey: Pubkey,
 
     pub swap_status: HashMap<[u8; 16], RequestStatus>,
-    // pub unwrap_requests: HashMap<[u8; 16], UnwrapRequest>,
+    pub requests: HashMap<[u8; 16], UnwrapRequest>,
     // pub requests_queue: RequestsQueue<u8>,
 }
 
@@ -220,34 +221,18 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn create_transfer_unwrap_request(&mut self, amount: &U256, sender: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
+    pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         // uint id = uint(keccak256(abi.encodePacked(msg.sender, receiver, block.number, amount)));
         let id = new_uuid(&receiver[0..6]);
         self.validate_requests_count()?;
 
-        // TODO: BURN TOKENS HERE
-        self.burn();
-        
-        // self.swap_status
-        // self.unwrap_requests.insert(&id.as_bytes(), UnwrapRequest { origin_address: *sender, destination_address: *receiver });
+        self.requests.insert(*id.as_bytes(), UnwrapRequest {
+            destination_address: *receiver,
+            origin_address: *sender_data_account,
+            amount
+        });
         self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
 
-        // self.requests_queue.push(&id.as_bytes());
-
-        // let instructions = vec![burn_checked(
-        //     &spl_token::id(),
-        //     &source,
-        //     &mint_pubkey,
-        //     &config.owner,
-        //     &config.multisigner_pubkeys,
-        //     amount,
-        //     decimals,
-        // )?];
-        // unwrapRequests[id] = UnwrapRequest(msg.sender, receiver, amount);
-        // swapStatus[id] = RequestStatus.New;
-        // tokenAddress.burnFrom(msg.sender, amount);
-        // QueueLib.push(requestsQueue, bytes32(id));
-        // emit RequestCreated(id, msg.sender, receiver, amount);
         Ok(())
     }
 
