@@ -2,9 +2,12 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use std::time::{Duration, SystemTime};
+use std::ops::Fn;
 
 use solana_program::{
     msg,
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -162,29 +165,6 @@ impl Pack for IBPortContract {
 
 impl IBPortContract {
 
-    fn mint(&mut self, swap_id: &[u8; 16], amount: &U256, receiver: &Pubkey) -> Result<(), PortError> {
-        // if 
-        // require(swapStatus[swapId] == RequestStatus.None, "invalid request status");
-        // tokenAddress.mint(receiver, amount);
-        // swapStatus[swapId] = RequestStatus.Success;
-
-        // let instructions = vec![mint_to_checked(
-        //     &spl_token::id(),
-        //     &token,
-        //     &recipient,
-        //     &config.owner,
-        //     &config.multisigner_pubkeys,
-        //     amount,
-        //     decimals,
-        // )?];
-
-        Ok(())
-    }
-
-    fn burn(&mut self) -> Result<(), PortError> {
-        Ok(())
-    }
-
     fn validate_requests_count(&self) -> Result<(), PortError> {
         if !self.count_is_below_limit() {
             return Err(PortError::TransferRequestsCountLimit);
@@ -192,8 +172,10 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn attach_data(&mut self, byte_data: &Vec<u8>) -> Result<(), PortError>  {
+    pub fn attach_data<F: Fn(u64, &AccountInfo) -> ProgramResult>(&mut self, byte_data: &Vec<u8>, mint_callback_fn: F) -> ProgramResult {
         // let byte_data = byte_data.to_vec();
+        let owner_bytes: [u8; 32] = [1; 32];
+        let owner = &Pubkey::new(&owner_bytes);
         let mut pos = 0;
         
         /**
@@ -207,11 +189,40 @@ impl IBPortContract {
             if "m" == std::str::from_utf8(&[action]).unwrap() {
                 let swap_id = array_ref![byte_data, pos, 16];
                 pos += 16;
+                
+                let swap_status = self.swap_status.get(swap_id);
+
+                if swap_status.is_some() {
+                    return Err(PortError::InvalidRequestStatus.into());
+                }
+
                 let amount = array_ref![byte_data, pos, 32];
                 pos += 32;
                 let receiver = array_ref![byte_data, pos, 32];
                 pos += 32;
-                self.mint(swap_id, amount, &Pubkey::new(&receiver[..]))?;
+
+                let recipient = &Pubkey::new(&*receiver);
+                let mut lamports: u64 = 0;
+                let recipient_account = AccountInfo::new(
+                    recipient,
+                    false, // is_signer
+                    true, // is_writable
+                    &mut lamports, // lamports
+                    &mut [], // data
+                    owner, // owner
+                    false, // executable,
+                    0, // rent_epoch
+                );
+
+                match mint_callback_fn(0, &recipient_account) {
+                    Ok(_) => {
+                        self.swap_status.insert(*swap_id, RequestStatus::Success);
+                        return Ok(());
+                    },
+                    Err(err) => {
+                        return Err(err);
+                    }
+                };
                 continue;
                 // return Ok(())
             }
@@ -232,6 +243,9 @@ impl IBPortContract {
             amount
         });
         self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
+
+        msg!("swap len: {:} \n", self.swap_status.len());
+        msg!("requests len: {:} \n", self.requests.len());
 
         Ok(())
     }

@@ -133,7 +133,6 @@ impl IBPortProcessor {
         // msg!(format!("token_holder: {:} \n", token_holder.key).as_str());
         // msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
 
-
         invoke_signed(
             &burn_ix,
             &[
@@ -146,6 +145,11 @@ impl IBPortProcessor {
         )?;
 
         ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
+
+        IBPortContract::pack(
+            ibport_contract_info,
+            &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -175,7 +179,46 @@ impl IBPortProcessor {
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        ibport_contract_info.attach_data(byte_data)?;
+        // let decimals = 8;
+        // let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+
+        // Get the accounts to mint
+        let token_program_id = next_account_info(account_info_iter)?;
+        let mint = next_account_info(account_info_iter)?;
+        let recipient_account = next_account_info(account_info_iter)?;
+        let pda_account = next_account_info(account_info_iter)?;
+        msg!("Creating mint instruction");
+
+        let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
+            let mint_ix = mint_to(
+                &token_program_id.key,
+                &mint.key,
+                &recipient_account.key,
+                &pda_account.key,
+                &[],
+                amount,
+            )?;
+
+            invoke_signed(
+                &mint_ix,
+                &[
+                    mint.clone(),
+                    recipient_account.clone(),
+                    pda_account.clone(),
+                    token_program_id.clone(),
+                ],
+                &[&[&b"ibport"[..]]],
+            )?;
+
+            Ok(())
+        };
+
+        ibport_contract_info.attach_data(byte_data, &mint_callback)?;
+
+        IBPortContract::pack(
+            ibport_contract_info,
+            &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
+        )?;
         
         Ok(())
     }
