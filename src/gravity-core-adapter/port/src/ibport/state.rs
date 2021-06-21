@@ -196,8 +196,10 @@ impl IBPortContract {
                     return Err(PortError::InvalidRequestStatus.into());
                 }
 
-                let amount = array_ref![byte_data, pos, 32];
-                pos += 32;
+                let raw_amount = array_ref![byte_data, pos, 8];
+                let amount = u64::from_le_bytes(*raw_amount);
+                pos += 8;
+
                 let receiver = array_ref![byte_data, pos, 32];
                 pos += 32;
 
@@ -214,7 +216,7 @@ impl IBPortContract {
                     0, // rent_epoch
                 );
 
-                match mint_callback_fn(0, &recipient_account) {
+                match mint_callback_fn(amount, &recipient_account) {
                     Ok(_) => {
                         self.swap_status.insert(*swap_id, RequestStatus::Success);
                         return Ok(());
