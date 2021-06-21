@@ -189,31 +189,31 @@ impl IBPortProcessor {
         let pda_account = next_account_info(account_info_iter)?;
         msg!("Creating mint instruction");
 
-        let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
-            let mint_ix = mint_to(
-                &token_program_id.key,
-                &mint.key,
-                &recipient_account.key,
-                &pda_account.key,
-                &[],
-                amount,
-            )?;
+        // let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
+        //     let mint_ix = mint_to(
+        //         &token_program_id.key,
+        //         &mint.key,
+        //         &recipient_account.key,
+        //         &pda_account.key,
+        //         &[],
+        //         amount,
+        //     )?;
 
-            invoke_signed(
-                &mint_ix,
-                &[
-                    mint.clone(),
-                    recipient_account.clone(),
-                    pda_account.clone(),
-                    token_program_id.clone(),
-                ],
-                &[&[&b"ibport"[..]]],
-            )?;
+        //     invoke_signed(
+        //         &mint_ix,
+        //         &[
+        //             mint.clone(),
+        //             recipient_account.clone(),
+        //             pda_account.clone(),
+        //             token_program_id.clone(),
+        //         ],
+        //         &[&[&b"ibport"[..]]],
+        //     )?;
 
-            Ok(())
-        };
+        //     Ok(())
+        // };
 
-        ibport_contract_info.attach_data(byte_data, &mint_callback)?;
+        // ibport_contract_info.attach_data(byte_data, &mint_callback)?;
 
         IBPortContract::pack(
             ibport_contract_info,

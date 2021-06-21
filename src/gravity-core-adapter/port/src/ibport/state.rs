@@ -15,8 +15,8 @@ use solana_program::{
 use spl_token::instruction::mint_to_checked;
 
 use solana_gravity_contract::gravity::state::PartialStorage;
-// use gravity_misc::model::{AbstractHashMap, HashMap};
-use std::collections::BTreeMap as HashMap;
+use gravity_misc::model::{AbstractHashMap, HashMap};
+// use std::collections::BTreeMap as HashMap;
 // use std::collections::HashMap;
 
 
@@ -79,7 +79,7 @@ pub type ForeignAddress = [u8; 32];
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 // pub type AttachedData = [u8; 80];
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone, Default)]
 pub struct UnwrapRequest {
     pub destination_address: ForeignAddress,
     pub origin_address: Pubkey,
