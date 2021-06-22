@@ -105,8 +105,7 @@ impl RequestCountConstrained for IBPortContract {
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         let res = vec![
-            // self.swap_status.len()
-            0
+            self.swap_status.len()
         ];
         res
     }
@@ -156,78 +155,78 @@ impl IBPortContract {
     }
 
     pub fn attach_data<F: Fn(u64, &AccountInfo) -> ProgramResult>(&mut self, byte_data: &Vec<u8>, mint_callback_fn: F) -> ProgramResult {
-        // let byte_data = byte_data.to_vec();
-        // let owner_bytes: [u8; 32] = [1; 32];
-        // let owner = &Pubkey::new(&owner_bytes);
-        // let mut pos = 0;
+        let byte_data = byte_data.to_vec();
+        let owner_bytes: [u8; 32] = [1; 32];
+        let owner = &Pubkey::new(&owner_bytes);
+        let mut pos = 0;
         
-        // /**
-        //  * We use iterative approach
-        //  * in order to process all the requests in one invocation
-        //  */
-        // while pos < byte_data.len() {
-        //     let action = byte_data[pos];
-        //     pos += 1;
+        /**
+         * We use iterative approach
+         * in order to process all the requests in one invocation
+         */
+        while pos < byte_data.len() {
+            let action = byte_data[pos];
+            pos += 1;
 
-        //     if "m" == std::str::from_utf8(&[action]).unwrap() {
-        //         let swap_id = array_ref![byte_data, pos, 16];
-        //         pos += 16;
+            if "m" == std::str::from_utf8(&[action]).unwrap() {
+                let swap_id = array_ref![byte_data, pos, 16];
+                pos += 16;
                 
-        //         let swap_status = self.swap_status.get(swap_id);
+                let swap_status = self.swap_status.get(swap_id);
 
-        //         if swap_status.is_some() {
-        //             return Err(PortError::InvalidRequestStatus.into());
-        //         }
+                if swap_status.is_some() {
+                    return Err(PortError::InvalidRequestStatus.into());
+                }
 
-        //         let raw_amount = array_ref![byte_data, pos, 8];
-        //         let amount = u64::from_le_bytes(*raw_amount);
-        //         pos += 8;
+                let raw_amount = array_ref![byte_data, pos, 8];
+                let amount = u64::from_le_bytes(*raw_amount);
+                pos += 8;
 
-        //         let receiver = array_ref![byte_data, pos, 32];
-        //         pos += 32;
+                let receiver = array_ref![byte_data, pos, 32];
+                pos += 32;
 
-        //         let recipient = &Pubkey::new(&*receiver);
-        //         let mut lamports: u64 = 0;
-        //         let recipient_account = AccountInfo::new(
-        //             recipient,
-        //             false, // is_signer
-        //             true, // is_writable
-        //             &mut lamports, // lamports
-        //             &mut [], // data
-        //             owner, // owner
-        //             false, // executable,
-        //             0, // rent_epoch
-        //         );
+                let recipient = &Pubkey::new(&*receiver);
+                let mut lamports: u64 = 0;
+                let recipient_account = AccountInfo::new(
+                    recipient,
+                    false, // is_signer
+                    true, // is_writable
+                    &mut lamports, // lamports
+                    &mut [], // data
+                    owner, // owner
+                    false, // executable,
+                    0, // rent_epoch
+                );
 
-        //         match mint_callback_fn(amount, &recipient_account) {
-        //             Ok(_) => {
-        //                 self.swap_status.insert(*swap_id, RequestStatus::Success);
-        //                 return Ok(());
-        //             },
-        //             Err(err) => {
-        //                 return Err(err);
-        //             }
-        //         };
-        //     }
-        // }
+                match mint_callback_fn(amount, &recipient_account) {
+                    Ok(_) => {
+                        self.swap_status.insert(*swap_id, RequestStatus::Success);
+                        return Ok(());
+                    },
+                    Err(err) => {
+                        return Err(err);
+                    }
+                };
+            }
+        }
         
 
         Ok(())
     }
 
     pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
-        // let id = new_uuid(&receiver[0..6]);
-        // self.validate_requests_count()?;
+        let mut record_id: [u8; 16] = Default::default();
+        record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
 
-        // self.requests.insert(*id.as_bytes(), UnwrapRequest {
-        //     destination_address: *receiver,
-        //     origin_address: *sender_data_account,
-        //     amount
-        // });
-        // self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
+        self.requests.insert(record_id, UnwrapRequest {
+            destination_address: *receiver,
+            origin_address: *sender_data_account,
+            amount
+        });
+        self.swap_status.insert(record_id, RequestStatus::New);
 
-        // msg!("swap len: {:} \n", self.swap_status.len());
-        // msg!("requests len: {:} \n", self.requests.len());
+        msg!("swap len: {:} \n", self.swap_status.len());
+        msg!("requests len: {:} \n", self.requests.len());
 
         Ok(())
     }
