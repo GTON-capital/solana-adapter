@@ -81,7 +81,6 @@ impl NebulaProcessor {
         nebula_contract_info.multisig_account = *nebula_contract_multisig_account.key;
         msg!("packing nebula contract");
 
-        // return Ok(());
         NebulaContract::pack(
             nebula_contract_info,
             &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
@@ -175,11 +174,11 @@ impl NebulaProcessor {
 
         msg!("incrementing pulse id");
 
-        let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
+        // let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
 
-        let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
-            vec![a, x.key.to_bytes().to_vec()].concat()
-        });
+        // let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
+        //     vec![a, x.key.to_bytes().to_vec()].concat()
+        // });
 
         let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
         msg!(format!("clock_info: {:}", *clock_info.key).as_str());
@@ -187,7 +186,12 @@ impl NebulaProcessor {
 
         let current_block = clock.slot;
 
-        nebula_contract_info.add_pulse(new_pulse_id, data_hash, current_block)?;
+        nebula_contract_info.add_pulse(data_hash, current_block)?;
+
+        NebulaContract::pack(
+            nebula_contract_info,
+            &mut nebula_contract_account.data.borrow_mut()[0..NebulaContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -226,10 +230,6 @@ impl NebulaProcessor {
             _ => {}
         };
 
-        // let rpc_client = RpcClient::new(String::from("https://testnet.solana.com"));
-        // let nebula_contract_multisig_info = rpc_client
-        //     .get_account(&nebula_contract_multisig_account_pubkey)
-        //     .unwrap();
 
         let nebula_multisig_info =
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
@@ -241,7 +241,6 @@ impl NebulaProcessor {
 
         nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
 
-        // rpc_client.send_and_confirm
 
         Ok(())
     }
