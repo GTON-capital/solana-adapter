@@ -170,6 +170,7 @@ impl IBPortContract {
 
             if "m" == std::str::from_utf8(&[action]).unwrap() {
                 let swap_id = array_ref![byte_data, pos, 16];
+
                 pos += 16;
                 
                 let swap_status = self.swap_status.get(swap_id);
@@ -179,7 +180,15 @@ impl IBPortContract {
                 }
 
                 let raw_amount = array_ref![byte_data, pos, 8];
-                let amount = u64::from_le_bytes(*raw_amount);
+                let ui_amount = f64::from_le_bytes(*raw_amount);
+
+                let decimals = 8;
+                let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+
+                msg!("decimals: {:} \n", decimals);
+                msg!("ui_amount: {:} \n", ui_amount);
+                msg!("amount: {:} \n", amount);
+
                 pos += 8;
 
                 let receiver = array_ref![byte_data, pos, 32];
