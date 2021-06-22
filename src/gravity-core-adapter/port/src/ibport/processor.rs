@@ -169,17 +169,13 @@ impl IBPortProcessor {
 
         validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
-        // Omit nebula for a second
-        // let nebula_contract_account = next_account_info(account_info_iter)?;
-        // if !nebula_contract_account.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
+        let nebula_contract_account = next_account_info(account_info_iter)?;
+        if !nebula_contract_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
-
-        // let decimals = 8;
-        // let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
         // Get the accounts to mint
         let token_program_id = next_account_info(account_info_iter)?;
