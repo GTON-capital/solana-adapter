@@ -77,7 +77,6 @@ impl IBPortProcessor {
 
         msg!("packing ib port contract");
 
-        // return Ok(());
         IBPortContract::pack(
             ibport_contract_info,
             &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
@@ -142,12 +141,13 @@ impl IBPortProcessor {
             &[&[&b"ibport"[..]]],
         )?;
 
-        // ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
+        msg!("saving request info");
+        ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
 
-        // IBPortContract::pack(
-        //     ibport_contract_info,
-        //     &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
-        // )?;
+        IBPortContract::pack(
+            ibport_contract_info,
+            &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -211,7 +211,7 @@ impl IBPortProcessor {
             Ok(())
         };
 
-        // ibport_contract_info.attach_data(byte_data, &mint_callback)?;
+        ibport_contract_info.attach_data(byte_data, &mint_callback)?;
 
         IBPortContract::pack(
             ibport_contract_info,

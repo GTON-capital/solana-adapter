@@ -15,10 +15,8 @@ use solana_program::{
 use spl_token::instruction::mint_to_checked;
 
 use solana_gravity_contract::gravity::state::PartialStorage;
-use gravity_misc::model::{AbstractHashMap, HashMap};
-// use std::collections::BTreeMap as HashMap;
+use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
 
-// use bincode;
 use arrayref::array_ref;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
@@ -29,8 +27,8 @@ use crate::ibport::error::PortError;
 
 use gravity_misc::model::{U256, new_uuid};
 
-
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone, Copy)]
 pub enum RequestStatus {
     None,
     New,
@@ -56,7 +54,8 @@ pub type ForeignAddress = [u8; 32];
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 // pub type AttachedData = [u8; 80];
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone, Default)]
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone, Default, Copy)]
 pub struct UnwrapRequest {
     pub destination_address: ForeignAddress,
     pub origin_address: Pubkey,
@@ -85,14 +84,19 @@ trait RequestCountConstrained {
     }
 }
 
+#[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
     pub nebula_address: Pubkey,
     pub token_address: Pubkey,
     pub initializer_pubkey: Pubkey,
 
-    pub swap_status: HashMap<[u8; 16], RequestStatus>,
-    pub requests: HashMap<[u8; 16], UnwrapRequest>,
+    // pub swap_status: Vec<RequestStatus>,
+    // pub requests: Vec<UnwrapRequest>,
+    // pub swap_status: [RequestStatus; 20],
+    // pub requests: [UnwrapRequest; 20],
+    pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
+    pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
     // pub requests_queue: RequestsQueue<u8>,
 }
 
@@ -101,14 +105,15 @@ impl RequestCountConstrained for IBPortContract {
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         let res = vec![
-            self.swap_status.len()
+            // self.swap_status.len()
+            0
         ];
         res
     }
 }
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..500;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1000;
 }
 
 impl Sealed for IBPortContract {}
@@ -119,8 +124,9 @@ impl IsInitialized for IBPortContract {
     }
 }
 
+
 impl Pack for IBPortContract {
-    const LEN: usize = 500;
+    const LEN: usize = 1000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -151,80 +157,77 @@ impl IBPortContract {
 
     pub fn attach_data<F: Fn(u64, &AccountInfo) -> ProgramResult>(&mut self, byte_data: &Vec<u8>, mint_callback_fn: F) -> ProgramResult {
         // let byte_data = byte_data.to_vec();
-        let owner_bytes: [u8; 32] = [1; 32];
-        let owner = &Pubkey::new(&owner_bytes);
-        let mut pos = 0;
+        // let owner_bytes: [u8; 32] = [1; 32];
+        // let owner = &Pubkey::new(&owner_bytes);
+        // let mut pos = 0;
         
-        /**
-         * We use iterative approach
-         * in order to process all the requests in one invocation
-         */
-        while pos < byte_data.len() {
-            let action = byte_data[pos];
-            pos += 1;
+        // /**
+        //  * We use iterative approach
+        //  * in order to process all the requests in one invocation
+        //  */
+        // while pos < byte_data.len() {
+        //     let action = byte_data[pos];
+        //     pos += 1;
 
-            if "m" == std::str::from_utf8(&[action]).unwrap() {
-                let swap_id = array_ref![byte_data, pos, 16];
-                pos += 16;
+        //     if "m" == std::str::from_utf8(&[action]).unwrap() {
+        //         let swap_id = array_ref![byte_data, pos, 16];
+        //         pos += 16;
                 
-                let swap_status = self.swap_status.get(swap_id);
+        //         let swap_status = self.swap_status.get(swap_id);
 
-                if swap_status.is_some() {
-                    return Err(PortError::InvalidRequestStatus.into());
-                }
+        //         if swap_status.is_some() {
+        //             return Err(PortError::InvalidRequestStatus.into());
+        //         }
 
-                let raw_amount = array_ref![byte_data, pos, 8];
-                let amount = u64::from_le_bytes(*raw_amount);
-                pos += 8;
+        //         let raw_amount = array_ref![byte_data, pos, 8];
+        //         let amount = u64::from_le_bytes(*raw_amount);
+        //         pos += 8;
 
-                let receiver = array_ref![byte_data, pos, 32];
-                pos += 32;
+        //         let receiver = array_ref![byte_data, pos, 32];
+        //         pos += 32;
 
-                let recipient = &Pubkey::new(&*receiver);
-                let mut lamports: u64 = 0;
-                let recipient_account = AccountInfo::new(
-                    recipient,
-                    false, // is_signer
-                    true, // is_writable
-                    &mut lamports, // lamports
-                    &mut [], // data
-                    owner, // owner
-                    false, // executable,
-                    0, // rent_epoch
-                );
+        //         let recipient = &Pubkey::new(&*receiver);
+        //         let mut lamports: u64 = 0;
+        //         let recipient_account = AccountInfo::new(
+        //             recipient,
+        //             false, // is_signer
+        //             true, // is_writable
+        //             &mut lamports, // lamports
+        //             &mut [], // data
+        //             owner, // owner
+        //             false, // executable,
+        //             0, // rent_epoch
+        //         );
 
-                match mint_callback_fn(amount, &recipient_account) {
-                    Ok(_) => {
-                        self.swap_status.insert(*swap_id, RequestStatus::Success);
-                        return Ok(());
-                    },
-                    Err(err) => {
-                        return Err(err);
-                    }
-                };
-                continue;
-                // return Ok(())
-            }
-        }
+        //         match mint_callback_fn(amount, &recipient_account) {
+        //             Ok(_) => {
+        //                 self.swap_status.insert(*swap_id, RequestStatus::Success);
+        //                 return Ok(());
+        //             },
+        //             Err(err) => {
+        //                 return Err(err);
+        //             }
+        //         };
+        //     }
+        // }
         
 
         Ok(())
     }
 
     pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
-        // uint id = uint(keccak256(abi.encodePacked(msg.sender, receiver, block.number, amount)));
-        let id = new_uuid(&receiver[0..6]);
-        self.validate_requests_count()?;
+        // let id = new_uuid(&receiver[0..6]);
+        // self.validate_requests_count()?;
 
-        self.requests.insert(*id.as_bytes(), UnwrapRequest {
-            destination_address: *receiver,
-            origin_address: *sender_data_account,
-            amount
-        });
-        self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
+        // self.requests.insert(*id.as_bytes(), UnwrapRequest {
+        //     destination_address: *receiver,
+        //     origin_address: *sender_data_account,
+        //     amount
+        // });
+        // self.swap_status.insert(*id.as_bytes(), RequestStatus::New);
 
-        msg!("swap len: {:} \n", self.swap_status.len());
-        msg!("requests len: {:} \n", self.requests.len());
+        // msg!("swap len: {:} \n", self.swap_status.len());
+        // msg!("requests len: {:} \n", self.requests.len());
 
         Ok(())
     }
