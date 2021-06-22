@@ -99,7 +99,6 @@ impl Pack for NebulaContract {
 impl NebulaContract {
     pub fn add_pulse(
         &mut self,
-        new_pulse_id: PulseID,
         data_hash: Vec<u8>,
         block_number: u64,
     ) -> Result<(), NebulaError> {
@@ -111,8 +110,9 @@ impl NebulaContract {
             },
         );
 
-        let new_last_pulse_id = new_pulse_id + 1;
-        self.last_pulse_id = new_last_pulse_id;
+        let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
+        // let new_last_pulse_id = new_pulse_id + 1;
+        self.last_pulse_id = new_pulse_id;
 
         Ok(())
     }

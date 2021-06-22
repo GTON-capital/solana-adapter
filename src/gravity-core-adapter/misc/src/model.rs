@@ -1,10 +1,7 @@
-
-// use std::collections::HashMap;
-use thiserror::Error;
 use std::fmt;
-use std::marker::PhantomData;
-
 use std::time::{Duration, SystemTime};
+
+use thiserror::Error;
 
 use solana_program::{
     program_error::ProgramError,
@@ -13,18 +10,11 @@ use solana_program::{
     msg,
 };
 
-// use bincode;
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-// use serde::{Deserialize, Serialize};
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
-
-// use nebula::{
-//     instruction::NebulaContractInstruction,
-//     state::{DataType, NebulaContract, PulseID},
-// };
 
 #[derive(Error, Debug, Copy, Clone)]
 pub enum ValidationError {
@@ -38,12 +28,10 @@ impl From<ValidationError> for ProgramError {
     }
 }
 
-
-
 pub type SubscriptionID = [u8; 16];
 pub type PulseID = u64;
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum DataType {
     Int64,
     String,
@@ -68,9 +56,10 @@ impl DataType {
     }
 }
 
+pub const MAX_RECORDS_COUNT: usize = 20;
 
-pub trait AbstractHashMap<K, V> {
-    fn insert(&mut self, key: &K, val: V) {}
+pub trait AbstractRecordHandler<K, V> {
+    fn insert(&mut self, key: K, val: V) {}
 
     fn contains_key(&self, key: &K) -> bool {
         false
@@ -81,38 +70,87 @@ pub trait AbstractHashMap<K, V> {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
-pub struct HashMap<K, V> {
+
+// No BorshSchema
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
+pub struct RecordHandler<K, V> {
     k: Vec<K>,
     v: Vec<V>,
+    // k: [K; MAX_RECORDS_COUNT],
+    // v: [V; MAX_RECORDS_COUNT],
+    // length: usize,
+    // last_element_index: usize
 }
 
-impl<K, V> HashMap<K, V> {
+
+impl<K: Default + Clone + Copy, V: Default + Clone + Copy> RecordHandler<K, V> {
+    
+    pub fn new() -> RecordHandler<K, V> {
+        // let k: [K; MAX_RECORDS_COUNT] = [K::default(); MAX_RECORDS_COUNT];
+        // let v: [V; MAX_RECORDS_COUNT] = [V::default(); MAX_RECORDS_COUNT];
+
+        RecordHandler::default()
+    }
+    
+    // return actual length
     pub fn len(&self) -> usize {
         self.k.len()
     }
+
+    pub fn cap(&self) -> usize {
+        MAX_RECORDS_COUNT
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.cap() == self.len()
+    }
+
+    // just forgots the first record (implicit record remove)
+    // pub fn reallocate(&mut self) {
+    //     let mut new_k: [K; MAX_RECORDS_COUNT] = [K::default(); MAX_RECORDS_COUNT];
+    //     let mut new_v: [V; MAX_RECORDS_COUNT] = [V::default(); MAX_RECORDS_COUNT];
+
+    //     for (key_i, key) in self.k.iter().enumerate() {
+    //         if key_i == 0 { continue; };
+
+    //         new_k[key_i - 1] = *key;
+    //         new_v[key_i - 1] = self.v[key_i];
+    //     }
+
+    //     self.k = new_k;
+    //     self.v = new_v;
+    // }
 }
 
-impl<K, V> AbstractHashMap<K, V> for HashMap<K, V> {
-    fn insert(&mut self, key: &K, val: V) {
-        // if self.k.is_empty() {
-        //     self.k.push(key.clone());
-        //     self.v.push(val.clone());
-        //     return;
-        // }
+impl<K: PartialEq + Default + Clone + Copy, V: Default + Clone + Copy> AbstractRecordHandler<K, V> for RecordHandler<K, V> {
+    fn insert(&mut self, key: K, val: V) {
+        // overwrite logic
+        for (pos, internal_key) in self.k.iter().enumerate() {
+            if *internal_key == key {
+                self.v[pos] = val.clone();
+                return;
+            }
+        }
 
-        // let (insertion_index, is_new) = if self.k.contains(key) {
-
-        // } else {
-
-        // }
+        self.k.push(key);
+        self.v.push(val);
     }
 
     fn contains_key(&self, key: &K) -> bool {
-        false
+        for (pos, internal_key) in self.k.iter().enumerate() {
+            if internal_key == key {
+                return true;
+            }
+        }
+        return false
     }
 
     fn get(&self, key: &K) -> Option<&V> {
+        for (pos, internal_key) in self.k.iter().enumerate() {
+            if internal_key == key {
+                return Some(&self.v[pos]);
+            }
+        }
         None
     }
 }
@@ -132,7 +170,5 @@ pub fn new_uuid(node_id: &[u8]) -> Uuid {
     );
 
     let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
-    // let sub_id = uuid.as_bytes();
-    // sub_id
     uuid
 }
