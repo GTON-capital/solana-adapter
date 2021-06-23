@@ -169,13 +169,12 @@ impl IBPortProcessor {
 
         validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
-        let nebula_contract_account = next_account_info(account_info_iter)?;
-        if !nebula_contract_account.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
+
+        if *initializer.key != ibport_contract_info.nebula_address {
+            return Err(PortError::AccessDenied.into());
+        }
 
         // Get the accounts to mint
         let token_program_id = next_account_info(account_info_iter)?;

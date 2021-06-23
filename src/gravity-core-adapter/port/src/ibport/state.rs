@@ -87,17 +87,12 @@ trait RequestCountConstrained {
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
-    pub nebula_address: Pubkey,
-    pub token_address: Pubkey,
+    pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
+    pub token_address: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
     pub initializer_pubkey: Pubkey,
 
-    // pub swap_status: Vec<RequestStatus>,
-    // pub requests: Vec<UnwrapRequest>,
-    // pub swap_status: [RequestStatus; 20],
-    // pub requests: [UnwrapRequest; 20],
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
-    // pub requests_queue: RequestsQueue<u8>,
 }
 
 impl RequestCountConstrained for IBPortContract {
