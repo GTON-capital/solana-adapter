@@ -22,7 +22,9 @@ pub enum PortError {
     #[error("Invalid token on request create")]
     InvalidInputToken,
 
-    // #[error("Wrong ")]
+    #[error("Error on receiver unpack (mint)")]
+    ErrorOnReceiverUnpack,
+
 }
 
 impl From<PortError> for ProgramError {

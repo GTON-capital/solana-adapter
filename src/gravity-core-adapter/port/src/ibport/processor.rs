@@ -9,6 +9,11 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    cmp, fmt,
+    rc::Rc,
+};
 
 use spl_token::{
     error::TokenError,
@@ -152,8 +157,8 @@ impl IBPortProcessor {
         Ok(())
     }
 
-    fn process_attach_value(
-        accounts: &[AccountInfo],
+    fn process_attach_value<'a, 't: 'a>(
+        accounts: &[AccountInfo<'t>],
         byte_data: &Vec<u8>,
         _program_id: &Pubkey,
     ) -> ProgramResult {
@@ -181,39 +186,38 @@ impl IBPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+
         msg!("Creating mint instruction");
 
-        let mint_callback = |amount: u64, x: &AccountInfo| -> ProgramResult {
-            let mint_ix = mint_to(
-                &token_program_id.key,
-                &mint.key,
-                &recipient_account.key,
-                &pda_account.key,
-                &[],
-                amount,
-            )?;
+        let mut amount: u64 = 0;
 
-            invoke_signed(
-                &mint_ix,
-                &[
-                    mint.clone(),
-                    recipient_account.clone(),
-                    pda_account.clone(),
-                    token_program_id.clone(),
-                ],
-                &[&[&b"ibport"[..]]],
-            )?;
+        ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
-            Ok(())
-        };
+        let mint_ix = mint_to(
+            &token_program_id.key,
+            &mint.key,
+            &recipient_account.key,
+            &pda_account.key,
+            &[],
+            amount,
+        )?;
 
-        ibport_contract_info.attach_data(byte_data, &mint_callback)?;
+        invoke_signed(
+            &mint_ix,
+            &[
+                mint.clone(),
+                recipient_account.clone(),
+                pda_account.clone(),
+                token_program_id.clone(),
+            ],
+            &[&[&b"ibport"[..]]],
+        )?;
 
         IBPortContract::pack(
             ibport_contract_info,
             &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
         )?;
-        
+
         Ok(())
     }
 
@@ -327,7 +331,7 @@ impl IBPortProcessor {
         msg!(format!("initializer: {:} \n", initializer.key).as_str());
         msg!(format!("ibport_contract_account: {:} \n", ibport_contract_account.key).as_str());
         
-        let mut ibport_contract_info =
+        let ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
         let decimals = 8;

@@ -34,7 +34,7 @@ pub enum RequestStatus {
     New,
     Rejected,
     Success,
-    Returned
+     
 }
 
 impl Default for RequestStatus {
@@ -69,7 +69,7 @@ trait RequestCountConstrained {
 
     fn unprocessed_requests_limit() -> usize {
         Self::MAX_IDLE_REQUESTS_COUNT
-    }
+    }                                                                                                                                                                                                             
 
     fn count_constrained_entities(&self) -> Vec<usize>;
 
@@ -104,7 +104,7 @@ impl RequestCountConstrained for IBPortContract {
         ];
         res
     }
-}
+} 
 
 impl PartialStorage for IBPortContract {
     const DATA_RANGE: std::ops::Range<usize> = 0..1000;
@@ -149,10 +149,8 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn attach_data<F: Fn(u64, &AccountInfo) -> ProgramResult>(&mut self, byte_data: &Vec<u8>, mint_callback_fn: F) -> ProgramResult {
+    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
         let byte_data = byte_data.to_vec();
-        let owner_bytes: [u8; 32] = [1; 32];
-        let owner = &Pubkey::new(&owner_bytes);
         let mut pos = 0;
         
         /**
@@ -189,28 +187,15 @@ impl IBPortContract {
                 let receiver = array_ref![byte_data, pos, 32];
                 pos += 32;
 
-                let recipient = &Pubkey::new(&*receiver);
-                let mut lamports: u64 = 0;
-                let recipient_account = AccountInfo::new(
-                    recipient,
-                    false, // is_signer
-                    true, // is_writable
-                    &mut lamports, // lamports
-                    &mut [], // data
-                    owner, // owner
-                    false, // executable,
-                    0, // rent_epoch
-                );
+                let built_token_pubkey = Pubkey::new(&*receiver);
 
-                match mint_callback_fn(amount, &recipient_account) {
-                    Ok(_) => {
-                        self.swap_status.insert(*swap_id, RequestStatus::Success);
-                        return Ok(());
-                    },
-                    Err(err) => {
-                        return Err(err);
-                    }
-                };
+                if *input_pubkey != built_token_pubkey {
+                    return Err(PortError::ErrorOnReceiverUnpack.into());
+                }
+                
+                *input_amount = amount;
+
+                return Ok(());
             }
         }
         
@@ -220,7 +205,9 @@ impl IBPortContract {
 
     pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         let mut record_id: [u8; 16] = Default::default();
-        record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
+
+        // record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
+        record_id.copy_from_slice(&receiver[0..16]);
 
         self.requests.insert(record_id, UnwrapRequest {
             destination_address: *receiver,
