@@ -5,6 +5,7 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
+    program::{invoke, invoke_signed},
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
@@ -32,6 +33,8 @@ use solana_gravity_contract::gravity::{
 
 use crate::nebula::instruction::NebulaContractInstruction;
 use crate::nebula::state::NebulaContract;
+use crate::nebula::error::NebulaError;
+use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
 pub struct NebulaProcessor;
@@ -186,7 +189,7 @@ impl NebulaProcessor {
 
         let current_block = clock.slot;
 
-        nebula_contract_info.add_pulse(data_hash, current_block)?;
+        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id, current_block)?;
 
         NebulaContract::pack(
             nebula_contract_info,
@@ -206,6 +209,7 @@ impl NebulaProcessor {
     ) -> ProgramResult {
         let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
@@ -220,6 +224,7 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
+
         match MiscProcessor::validate_owner(
             program_id,
             &nebula_contract_multisig_account_pubkey,
@@ -230,7 +235,6 @@ impl NebulaProcessor {
             _ => {}
         };
 
-
         let nebula_multisig_info =
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
@@ -239,10 +243,34 @@ impl NebulaProcessor {
             initializer.key,
         )?;
 
-        nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
+        match nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id) {
+            Ok(subscription) => {
+                let destination_program_id = subscription.contract_address;
+
+                let target_program_id = next_account_info(account_info_iter)?;
+
+                if *target_program_id.key != destination_program_id {
+                    return Err(NebulaError::InvalidSubscriptionProgramID.into());
+                }
 
 
-        Ok(())
+                let rest_accounts = &accounts[4..];
+                let instruction = attach_value(
+                    target_program_id.key,
+                    &data_value,
+                    rest_accounts,
+                )?;
+
+                invoke_signed(
+                    &instruction,
+                    rest_accounts,
+                    &[&[b"gravity_subscriber"]]
+                )?;
+
+                Ok(())
+            },
+            Err(err) => Err(err.into())
+        }
     }
 
     pub fn process_nebula_subscription(

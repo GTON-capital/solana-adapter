@@ -12,19 +12,19 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use std::collections::BTreeMap as HashMap;
+use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use crate::nebula::error::NebulaError;
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct Subscription {
     pub sender: Pubkey,
     pub contract_address: Pubkey,
@@ -32,7 +32,7 @@ pub struct Subscription {
     pub reward: u64, // should be 2^256
 }
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
     pub data_hash: Vec<u8>,
     pub height: u64,
@@ -40,9 +40,9 @@ pub struct Pulse {
 
 pub type NebulaQueue<T> = Vec<T>;
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
-    pub rounds_dict: HashMap<PulseID, bool>,
+    pub rounds_dict: RecordHandler<PulseID, bool>,
     subscriptions_queue: NebulaQueue<SubscriptionID>,
     pub oracles: Vec<Pubkey>,
 
@@ -55,9 +55,9 @@ pub struct NebulaContract {
     subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
-    subscriptions_map: HashMap<SubscriptionID, Subscription>,
-    pulses_map: HashMap<PulseID, Pulse>,
-    is_pulse_sent: HashMap<PulseID, bool>,
+    subscriptions_map: RecordHandler<SubscriptionID, Subscription>,
+    pulses_map: RecordHandler<PulseID, Pulse>,
+    is_pulse_sent: RecordHandler<PulseID, bool>,
 
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
@@ -100,17 +100,19 @@ impl NebulaContract {
     pub fn add_pulse(
         &mut self,
         data_hash: Vec<u8>,
+        last_pulse_id: u64,
         block_number: u64,
     ) -> Result<(), NebulaError> {
+        let new_pulse_id = last_pulse_id + 1;
+
         self.pulses_map.insert(
-            &new_pulse_id,
+            new_pulse_id,
             Pulse {
                 data_hash,
                 height: block_number,
             },
         );
 
-        let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
         // let new_last_pulse_id = new_pulse_id + 1;
         self.last_pulse_id = new_pulse_id;
 
@@ -167,7 +169,7 @@ impl NebulaContract {
             Err(_) => return Err(NebulaError::SubscribeFailed),
         };
 
-        self.subscriptions_map.insert(&sub_id, subscription);
+        self.subscriptions_map.insert(sub_id, subscription);
 
         Ok(())
     }
@@ -190,7 +192,7 @@ impl NebulaContract {
         data_type: &DataType,
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
-    ) -> Result<(), NebulaError> {
+    ) -> Result<(&Subscription), NebulaError> {
         // check is value has been sent
         // if self.subscriptions_map
         if let Some(pulse_sent) = self.is_pulse_sent.get(&pulse_id) {
@@ -199,7 +201,7 @@ impl NebulaContract {
             }
         }
 
-        self.is_pulse_sent.insert(pulse_id, true);
+        self.is_pulse_sent.insert(*pulse_id, true);
 
         let subscription = match self.subscriptions_map.get(&subscription_id) {
             Some(v) => v,
@@ -207,8 +209,8 @@ impl NebulaContract {
         };
 
         // TODO - cross program invocation
-        let destination_program_id = subscription.contract_address;
+        // let destination_program_id = subscription.contract_address;
 
-        Ok(())
+        Ok((subscription))
     }
 }
