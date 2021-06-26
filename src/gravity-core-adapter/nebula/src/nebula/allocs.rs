@@ -29,7 +29,12 @@ pub fn allocation_by_instruction_index(
             NebulaContractInstruction::SUB_ID_ALLOC,
         ],
         // Subscribe
-        4 => vec![NebulaContractInstruction::PUBKEY_ALLOC, 1, 8],
+        4 => vec![
+            NebulaContractInstruction::PUBKEY_ALLOC, 
+            1,
+            8,
+            NebulaContractInstruction::SUB_ID_ALLOC,
+        ],
         _ => return Err(NebulaError::InvalidInstructionIndex.into()),
     })
 }

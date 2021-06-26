@@ -11,7 +11,6 @@ use std::ops::Range;
 use std::slice::SliceIndex;
 
 use arrayref::{array_ref, array_refs};
-// use hex;
 
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
@@ -43,6 +42,7 @@ pub enum NebulaContractInstruction {
         address: Pubkey,
         min_confirmations: u8,
         reward: u64,
+        subscription_id: SubscriptionID,
     },
 }
 
@@ -178,10 +178,11 @@ impl NebulaContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
 
                 let built_range = build_range_from_alloc(&allocs);
-                let (address, min_confirmations, reward) = (
+                let (address, min_confirmations, reward, subscription_id) = (
                     built_range[0].clone(),
                     built_range[1].clone(),
                     built_range[2].clone(),
+                    built_range[3].clone(),
                 );
 
                 let address = extract_from_range(rest, address, |x: &[u8]| {
@@ -196,11 +197,13 @@ impl NebulaContractInstruction {
                 let reward = extract_from_range(rest, reward, |x: &[u8]| {
                     u64::from_le_bytes(*array_ref![x, 0, 8])
                 })?;
+                let subscription_id = extract_from_range(rest, subscription_id, |x: &[u8]| *array_ref![x, 0, 16])?;
 
                 Self::Subscribe {
                     address,
                     min_confirmations,
                     reward,
+                    subscription_id,
                 }
             }
             _ => return Err(InvalidInstruction.into()),

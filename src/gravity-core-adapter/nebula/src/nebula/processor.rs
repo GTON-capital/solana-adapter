@@ -10,20 +10,11 @@ use solana_program::{
     sysvar::Sysvar,
 };
 
-// use solana_client::rpc_client::RpcClient;
-
 use spl_token::{
-    // instruction::initialize_multisig,
-    // state::Account as TokenAccount
     error::TokenError,
     instruction::is_valid_signer_index,
-
-    // processor::Processor::process_initialize_multisig,
-    // processor::Processor as TokenProcessor,
     state::Multisig,
 };
-
-use uuid::Uuid;
 
 use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
 use solana_gravity_contract::gravity::{
@@ -253,7 +244,6 @@ impl NebulaProcessor {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
 
-
                 let rest_accounts = &accounts[4..];
                 let instruction = attach_value(
                     target_program_id.key,
@@ -264,7 +254,12 @@ impl NebulaProcessor {
                 invoke_signed(
                     &instruction,
                     rest_accounts,
-                    &[&[b"gravity_subscriber"]]
+                    &[&[b"ibport"]]
+                )?;
+
+                NebulaContract::pack(
+                    nebula_contract_info,
+                    &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
                 )?;
 
                 Ok(())
@@ -278,9 +273,9 @@ impl NebulaProcessor {
         subscriber_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
+        subscription_id: SubscriptionID,
         _program_id: &Pubkey,
     ) -> ProgramResult {
-        // let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
@@ -292,9 +287,6 @@ impl NebulaProcessor {
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
-        // nebula_contract_info.
-        // let mut subscription_id = nebula_contract_info.new_subscription_id();
-
         msg!("generating subscription id");
         msg!("subscribing");
 
@@ -303,9 +295,15 @@ impl NebulaProcessor {
             subscriber_address,
             min_confirmations,
             reward,
+            &subscription_id,
         )?;
 
         msg!("successfully subscribed!");
+
+        NebulaContract::pack(
+            nebula_contract_info,
+            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -374,6 +372,7 @@ impl NebulaProcessor {
                 address,
                 min_confirmations,
                 reward,
+                subscription_id,
             } => {
                 msg!("Instruction: Subscribe To Nebula");
 
@@ -382,6 +381,7 @@ impl NebulaProcessor {
                     address,
                     min_confirmations,
                     reward,
+                    subscription_id,
                     program_id,
                 )
             }

@@ -7,8 +7,10 @@ pub enum NebulaError {
     /// Failed to send value to subs
     #[error("Failed to send value to subs")]
     SendValueToSubsFailed,
+    
     #[error("Sub id exists")]
     SubscriberExists,
+
     #[error("Subscribe failed")]
     SubscribeFailed,
 

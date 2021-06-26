@@ -1,9 +1,5 @@
-// use std::collections::HashMap;
-
 use std::fmt;
 use std::marker::PhantomData;
-
-use std::time::{Duration, SystemTime};
 
 use solana_program::{
     msg,
@@ -19,10 +15,6 @@ use solana_gravity_contract::gravity::state::PartialStorage;
 use crate::nebula::error::NebulaError;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-
-use uuid::v1::{Context, Timestamp};
-use uuid::Uuid;
-
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct Subscription {
@@ -64,7 +56,7 @@ pub struct NebulaContract {
 }
 
 impl PartialStorage for NebulaContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..2000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
 }
 
 impl Sealed for NebulaContract {}
@@ -77,7 +69,7 @@ impl IsInitialized for NebulaContract {
 }
 
 impl Pack for NebulaContract {
-    const LEN: usize = 2000;
+    const LEN: usize = 1500;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -121,37 +113,13 @@ impl NebulaContract {
 
     const SERIALIZE_CONTEXT: u16 = 50;
 
-    fn new_subscription_id(
-        &self,
-        node_id: &[u8],
-    ) -> Result<SubscriptionID, Box<dyn std::error::Error>> {
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-
-        let context = Context::new(NebulaContract::SERIALIZE_CONTEXT);
-
-        let ts = Timestamp::from_unix(
-            &context,
-            current_time.as_secs(),
-            current_time.subsec_nanos(),
-        );
-
-        let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
-        let sub_id = uuid.as_bytes();
-
-        // an approach to avoid collision
-        if self.subscriptions_map.contains_key(sub_id) {
-            return self.new_subscription_id(node_id);
-        }
-
-        Ok(*sub_id)
-    }
-
     pub fn subscribe(
         &mut self,
         sender: Pubkey,
         contract_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
+        subscription_id: &SubscriptionID,
     ) -> Result<(), NebulaError> {
         let subscription = Subscription {
             sender,
@@ -160,16 +128,12 @@ impl NebulaContract {
             reward,
         };
 
-        let data = subscription.try_to_vec().unwrap();
-        let serialized_subscription: &mut [u8] = &mut [data.len() as u8; 0];
-        serialized_subscription[..data.len()].copy_from_slice(&data);
+        // an approach to avoid collision
+        if self.subscriptions_map.contains_key(subscription_id) {
+            return Err(NebulaError::SubscribeFailed);
+        }
 
-        let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
-            Ok(val) => val,
-            Err(_) => return Err(NebulaError::SubscribeFailed),
-        };
-
-        self.subscriptions_map.insert(sub_id, subscription);
+        self.subscriptions_map.insert(*subscription_id, subscription);
 
         Ok(())
     }
