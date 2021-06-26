@@ -20,6 +20,9 @@ uuid = { version = "0.8", features = ["v1"] }
 gravity-misc = { version = "0.0.1", path = "../misc" }
 solana-gravity-contract = { version = "0.0.1", path = "../gravity", features = ["no-entrypoint"] }
 
+[features]
+no-entrypoint = []
+
 [dev-dependencies]
 solana-program-test = "=1.6.9"
 solana-sdk = "=1.6.9"
