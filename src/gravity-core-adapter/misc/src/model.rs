@@ -83,7 +83,7 @@ pub struct RecordHandler<K, V> {
 }
 
 
-impl<K: Default + Clone + Copy, V: Default + Clone + Copy> RecordHandler<K, V> {
+impl<K: Default + Clone, V: Default + Clone> RecordHandler<K, V> {
     
     pub fn new() -> RecordHandler<K, V> {
         // let k: [K; MAX_RECORDS_COUNT] = [K::default(); MAX_RECORDS_COUNT];
@@ -122,7 +122,7 @@ impl<K: Default + Clone + Copy, V: Default + Clone + Copy> RecordHandler<K, V> {
     // }
 }
 
-impl<K: PartialEq + Default + Clone + Copy, V: Default + Clone + Copy> AbstractRecordHandler<K, V> for RecordHandler<K, V> {
+impl<K: PartialEq + Default + Clone, V: Default + Clone> AbstractRecordHandler<K, V> for RecordHandler<K, V> {
     fn insert(&mut self, key: K, val: V) {
         // overwrite logic
         for (pos, internal_key) in self.k.iter().enumerate() {
