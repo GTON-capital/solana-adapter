@@ -105,7 +105,6 @@ impl NebulaContract {
             },
         );
 
-        // let new_last_pulse_id = new_pulse_id + 1;
         self.last_pulse_id = new_pulse_id;
 
         Ok(())

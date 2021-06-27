@@ -156,23 +156,17 @@ impl NebulaProcessor {
 
         let multisig_owner_keys = &accounts[3..3 + nebula_contract_info.bft as usize].to_vec();
 
-        // match MiscProcessor::validate_owner(
-        //     program_id,
-        //     &nebula_contract_multisig_account_pubkey,
-        //     &nebula_contract_multisig_account,
-        //     &multisig_owner_keys,
-        // ) {
-        //     Err(err) => return Err(err),
-        //     _ => {}
-        // };
+        match MiscProcessor::validate_owner(
+            program_id,
+            &nebula_contract_multisig_account_pubkey,
+            &nebula_contract_multisig_account,
+            &multisig_owner_keys,
+        ) {
+            Err(err) => return Err(err),
+            _ => {}
+        };
 
         msg!("incrementing pulse id");
-
-        // let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
-
-        // let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
-        //     vec![a, x.key.to_bytes().to_vec()].concat()
-        // });
 
         let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
         msg!(format!("clock_info: {:}", *clock_info.key).as_str());
@@ -198,10 +192,6 @@ impl NebulaProcessor {
         subscription_id: &SubscriptionID,
         program_id: &Pubkey,
     ) -> ProgramResult {
-        msg!("data_type: {:?} \n", data_type);
-        msg!("pulse_id: {:?} \n", pulse_id);
-        msg!("subscription_id: {:?} \n", subscription_id);
-
         let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
 
@@ -247,10 +237,6 @@ impl NebulaProcessor {
 
                 // IB Port Binary
                 let subscriber_contract_program_id = next_account_info(account_info_iter)?;
-
-                msg!("target_program_id(got) {:} \n", target_program_id.key);
-                msg!("destination_program_id(expected): {:} \n", destination_program_id);
-                msg!("subscriber_contract_program_id(expected): {:} \n", subscriber_contract_program_id.key);
 
                 // return Ok(());
 
