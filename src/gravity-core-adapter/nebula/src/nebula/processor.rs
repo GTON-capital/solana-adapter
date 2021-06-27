@@ -242,13 +242,19 @@ impl NebulaProcessor {
             Ok(subscription) => {
                 let destination_program_id = subscription.contract_address;
 
+                // TOKEN - spl_token::id()
                 let target_program_id = next_account_info(account_info_iter)?;
 
-                // msg!("target_program_id(got) {:} \n", target_program_id.key);
-                // msg!("destination_program_id(expected): {:} \n", destination_program_id);
+                // IB Port Binary
+                let subscriber_contract_program_id = next_account_info(account_info_iter)?;
+
+                msg!("target_program_id(got) {:} \n", target_program_id.key);
+                msg!("destination_program_id(expected): {:} \n", destination_program_id);
+                msg!("subscriber_contract_program_id(expected): {:} \n", subscriber_contract_program_id.key);
 
                 // return Ok(());
 
+                // IB Port Data Account
                 let ibport_data_account = next_account_info(account_info_iter)?;
 
                 let mint = next_account_info(account_info_iter)?;
@@ -259,24 +265,43 @@ impl NebulaProcessor {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
 
+                msg!("ibport_data_account {:?} \n", ibport_data_account.key);
+                msg!("data_value {:?} \n", data_value);
+                msg!("destination_program_id {:?} \n", destination_program_id);
+                msg!("initializer {:?} \n", initializer.key);
+                msg!("subscriber_contract_program_id {:?} \n", subscriber_contract_program_id.key);
+                msg!("mint {:?} \n", mint.key);
+                msg!("recipient_account {:?} \n", recipient_account.key);
+                msg!("pda_account {:?} \n", pda_account.key);
+
                 let instruction = attach_value(
-                    &pda_account.key,
                     &data_value,
+                    &subscriber_contract_program_id.key,
+                    target_program_id.key, // &spl_token::id(),
                     &mint.key,
                     &recipient_account.key,
                     &pda_account.key,
                     &[],
                 )?;
 
+
+                // byte_data: &Vec<u8>,
+                // target_program_id: &Pubkey,  // IB Port binary
+                // initializer: &Pubkey,
+                // token_program_id: &Pubkey, // actually spl_token::id()
+                // mint: &Pubkey, // actually the result of spl-token create-token (cli)
+                // recipient_account: &Pubkey,
+                // ibport_pda_account: &Pubkey,
+                // signer_pubkeys: &[&Pubkey],
+
                 invoke_signed(
                     &instruction,
                     &[
-                        initializer.clone(),
-                        ibport_data_account.clone(),
+                        subscriber_contract_program_id.clone(),
                         mint.clone(),
                         recipient_account.clone(),
                         pda_account.clone(),
-                        target_program_id.clone(),
+                        // target_program_id.clone(),
                     ],
                     &[&[b"ibport"]]
                 )?;

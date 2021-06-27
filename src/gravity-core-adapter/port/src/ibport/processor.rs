@@ -164,6 +164,9 @@ impl IBPortProcessor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
+        msg!("got the attach!");
+        return Ok(());
+
         let initializer = next_account_info(account_info_iter)?;
 
         if !initializer.is_signer {
@@ -201,6 +204,8 @@ impl IBPortProcessor {
             &[],
             amount,
         )?;
+
+        return Ok(());
 
         invoke_signed(
             &mint_ix,

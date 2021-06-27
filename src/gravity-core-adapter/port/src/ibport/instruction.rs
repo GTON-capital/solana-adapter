@@ -147,28 +147,29 @@ impl IBPortContractInstruction {
 }
 
 pub fn attach_value(
-    ibport_program_id: &Pubkey,
     byte_data: &Vec<u8>,
-    mint_pubkey: &Pubkey,
-    account_pubkey: &Pubkey,
-    owner_pubkey: &Pubkey,
+    target_program_id: &Pubkey, 
+    token_program_id: &Pubkey, // actually spl_token::id()
+    mint: &Pubkey, // actually the result of spl-token create-token (cli)
+    recipient_account: &Pubkey,
+    ibport_pda_account: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let data = IBPortContractInstruction::AttachValue { byte_data: byte_data.clone()  }.pack();
 
-    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
-    accounts.push(AccountMeta::new(*mint_pubkey, false));
-    accounts.push(AccountMeta::new(*account_pubkey, false));
-    accounts.push(AccountMeta::new_readonly(
-        *owner_pubkey,
-        signer_pubkeys.is_empty(),
-    ));
+    let mut accounts = Vec::with_capacity(5 + signer_pubkeys.len());
+    // accounts.push(AccountMeta::new_readonly(*initializer, true));
+    accounts.push(AccountMeta::new_readonly(*token_program_id, false));
+    accounts.push(AccountMeta::new(*mint, false));
+    accounts.push(AccountMeta::new(*recipient_account, false));
+    accounts.push(AccountMeta::new_readonly(*ibport_pda_account, false));
+
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
-        program_id: *ibport_program_id,
+        program_id: *target_program_id,
         accounts,
         data,
     })
