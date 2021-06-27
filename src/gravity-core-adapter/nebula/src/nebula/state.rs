@@ -1,9 +1,5 @@
-// use std::collections::HashMap;
-
 use std::fmt;
 use std::marker::PhantomData;
-
-use std::time::{Duration, SystemTime};
 
 use solana_program::{
     msg,
@@ -12,19 +8,15 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use std::collections::BTreeMap as HashMap;
+use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use crate::nebula::error::NebulaError;
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-use uuid::v1::{Context, Timestamp};
-use uuid::Uuid;
-
-
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct Subscription {
     pub sender: Pubkey,
     pub contract_address: Pubkey,
@@ -32,7 +24,7 @@ pub struct Subscription {
     pub reward: u64, // should be 2^256
 }
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
     pub data_hash: Vec<u8>,
     pub height: u64,
@@ -40,9 +32,9 @@ pub struct Pulse {
 
 pub type NebulaQueue<T> = Vec<T>;
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Default, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
-    pub rounds_dict: HashMap<PulseID, bool>,
+    pub rounds_dict: RecordHandler<PulseID, bool>,
     subscriptions_queue: NebulaQueue<SubscriptionID>,
     pub oracles: Vec<Pubkey>,
 
@@ -55,16 +47,16 @@ pub struct NebulaContract {
     subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
-    subscriptions_map: HashMap<SubscriptionID, Subscription>,
-    pulses_map: HashMap<PulseID, Pulse>,
-    is_pulse_sent: HashMap<PulseID, bool>,
+    subscriptions_map: RecordHandler<SubscriptionID, Subscription>,
+    pulses_map: RecordHandler<PulseID, Pulse>,
+    is_pulse_sent: RecordHandler<PulseID, bool>,
 
     pub is_initialized: bool,
     pub initializer_pubkey: Pubkey,
 }
 
 impl PartialStorage for NebulaContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..2000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
 }
 
 impl Sealed for NebulaContract {}
@@ -77,7 +69,7 @@ impl IsInitialized for NebulaContract {
 }
 
 impl Pack for NebulaContract {
-    const LEN: usize = 2000;
+    const LEN: usize = 1500;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -100,18 +92,19 @@ impl NebulaContract {
     pub fn add_pulse(
         &mut self,
         data_hash: Vec<u8>,
+        last_pulse_id: u64,
         block_number: u64,
     ) -> Result<(), NebulaError> {
+        let new_pulse_id = last_pulse_id + 1;
+
         self.pulses_map.insert(
-            &new_pulse_id,
+            new_pulse_id,
             Pulse {
                 data_hash,
                 height: block_number,
             },
         );
 
-        let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
-        // let new_last_pulse_id = new_pulse_id + 1;
         self.last_pulse_id = new_pulse_id;
 
         Ok(())
@@ -119,37 +112,13 @@ impl NebulaContract {
 
     const SERIALIZE_CONTEXT: u16 = 50;
 
-    fn new_subscription_id(
-        &self,
-        node_id: &[u8],
-    ) -> Result<SubscriptionID, Box<dyn std::error::Error>> {
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-
-        let context = Context::new(NebulaContract::SERIALIZE_CONTEXT);
-
-        let ts = Timestamp::from_unix(
-            &context,
-            current_time.as_secs(),
-            current_time.subsec_nanos(),
-        );
-
-        let uuid = Uuid::new_v1(ts, node_id).expect("failed to generate UUID");
-        let sub_id = uuid.as_bytes();
-
-        // an approach to avoid collision
-        if self.subscriptions_map.contains_key(sub_id) {
-            return self.new_subscription_id(node_id);
-        }
-
-        Ok(*sub_id)
-    }
-
     pub fn subscribe(
         &mut self,
         sender: Pubkey,
         contract_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
+        subscription_id: &SubscriptionID,
     ) -> Result<(), NebulaError> {
         let subscription = Subscription {
             sender,
@@ -158,16 +127,12 @@ impl NebulaContract {
             reward,
         };
 
-        let data = subscription.try_to_vec().unwrap();
-        let serialized_subscription: &mut [u8] = &mut [data.len() as u8; 0];
-        serialized_subscription[..data.len()].copy_from_slice(&data);
+        // an approach to avoid collision
+        if self.subscriptions_map.contains_key(subscription_id) {
+            return Err(NebulaError::SubscribeFailed);
+        }
 
-        let sub_id = match self.new_subscription_id(&serialized_subscription[0..6]) {
-            Ok(val) => val,
-            Err(_) => return Err(NebulaError::SubscribeFailed),
-        };
-
-        self.subscriptions_map.insert(&sub_id, subscription);
+        self.subscriptions_map.insert(*subscription_id, subscription);
 
         Ok(())
     }
@@ -190,7 +155,7 @@ impl NebulaContract {
         data_type: &DataType,
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
-    ) -> Result<(), NebulaError> {
+    ) -> Result<(&Subscription), NebulaError> {
         // check is value has been sent
         // if self.subscriptions_map
         if let Some(pulse_sent) = self.is_pulse_sent.get(&pulse_id) {
@@ -199,7 +164,7 @@ impl NebulaContract {
             }
         }
 
-        self.is_pulse_sent.insert(pulse_id, true);
+        self.is_pulse_sent.insert(*pulse_id, true);
 
         let subscription = match self.subscriptions_map.get(&subscription_id) {
             Some(v) => v,
@@ -207,8 +172,8 @@ impl NebulaContract {
         };
 
         // TODO - cross program invocation
-        let destination_program_id = subscription.contract_address;
+        // let destination_program_id = subscription.contract_address;
 
-        Ok(())
+        Ok((subscription))
     }
 }

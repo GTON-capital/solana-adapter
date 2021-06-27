@@ -5,24 +5,16 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
+    program::{invoke, invoke_signed},
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
 
-// use solana_client::rpc_client::RpcClient;
-
 use spl_token::{
-    // instruction::initialize_multisig,
-    // state::Account as TokenAccount
     error::TokenError,
     instruction::is_valid_signer_index,
-
-    // processor::Processor::process_initialize_multisig,
-    // processor::Processor as TokenProcessor,
     state::Multisig,
 };
-
-use uuid::Uuid;
 
 use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
 use solana_gravity_contract::gravity::{
@@ -32,6 +24,8 @@ use solana_gravity_contract::gravity::{
 
 use crate::nebula::instruction::NebulaContractInstruction;
 use crate::nebula::state::NebulaContract;
+use crate::nebula::error::NebulaError;
+use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 
 pub struct NebulaProcessor;
@@ -40,7 +34,7 @@ impl NebulaProcessor {
     fn process_init_nebula_contract(
         accounts: &[AccountInfo],
         nebula_data_type: DataType,
-        gravity_contract_program_id: &Pubkey,
+        gravity_contract_data_account: &Pubkey,
         initial_oracles: Vec<Pubkey>,
         oracles_bft: u8,
         _program_id: &Pubkey,
@@ -60,7 +54,7 @@ impl NebulaProcessor {
         nebula_contract_info.bft = oracles_bft;
 
         nebula_contract_info.oracles = initial_oracles.clone();
-        nebula_contract_info.gravity_contract = *gravity_contract_program_id;
+        nebula_contract_info.gravity_contract = *gravity_contract_data_account;
 
         msg!("instantiated nebula contract");
 
@@ -174,19 +168,13 @@ impl NebulaProcessor {
 
         msg!("incrementing pulse id");
 
-        // let new_pulse_id = nebula_contract_info.last_pulse_id + 1;
-
-        // let data_hash = multisig_owner_keys.iter().fold(Vec::new(), |a, x| {
-        //     vec![a, x.key.to_bytes().to_vec()].concat()
-        // });
-
         let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
         msg!(format!("clock_info: {:}", *clock_info.key).as_str());
         let clock = &Clock::from_account_info(clock_info)?;
 
         let current_block = clock.slot;
 
-        nebula_contract_info.add_pulse(data_hash, current_block)?;
+        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id, current_block)?;
 
         NebulaContract::pack(
             nebula_contract_info,
@@ -206,6 +194,7 @@ impl NebulaProcessor {
     ) -> ProgramResult {
         let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
@@ -220,16 +209,16 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
-        match MiscProcessor::validate_owner(
-            program_id,
-            &nebula_contract_multisig_account_pubkey,
-            &nebula_contract_multisig_account,
-            &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
-        ) {
-            Err(err) => return Err(err),
-            _ => {}
-        };
 
+        // match MiscProcessor::validate_owner(
+        //     program_id,
+        //     &nebula_contract_multisig_account_pubkey,
+        //     &nebula_contract_multisig_account,
+        //     &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
+        // ) {
+        //     Err(err) => return Err(err),
+        //     _ => {}
+        // };
 
         let nebula_multisig_info =
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
@@ -239,10 +228,72 @@ impl NebulaProcessor {
             initializer.key,
         )?;
 
-        nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id)?;
+        match nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id) {
+            Ok(subscription) => {
+                let destination_program_id = subscription.contract_address;
 
+                // TOKEN - spl_token::id()
+                let target_program_id = next_account_info(account_info_iter)?;
 
-        Ok(())
+                // IB Port Binary
+                let subscriber_contract_program_id = next_account_info(account_info_iter)?;
+
+                // return Ok(());
+
+                // IB Port Data Account
+                let ibport_data_account = next_account_info(account_info_iter)?;
+
+                let mint = next_account_info(account_info_iter)?;
+                let recipient_account = next_account_info(account_info_iter)?;
+                let pda_account = next_account_info(account_info_iter)?;
+
+                if *pda_account.key != destination_program_id {
+                    return Err(NebulaError::InvalidSubscriptionProgramID.into());
+                }
+
+                msg!("ibport_data_account {:?} \n", ibport_data_account.key);
+                msg!("data_value {:?} \n", data_value);
+                msg!("destination_program_id {:?} \n", destination_program_id);
+                msg!("initializer {:?} \n", initializer.key);
+                msg!("subscriber_contract_program_id {:?} \n", subscriber_contract_program_id.key);
+                msg!("mint {:?} \n", mint.key);
+                msg!("recipient_account {:?} \n", recipient_account.key);
+                msg!("pda_account {:?} \n", pda_account.key);
+
+                let instruction = attach_value(
+                    &data_value,
+                    &initializer.key,
+                    &ibport_data_account.key,
+                    &subscriber_contract_program_id.key,
+                    target_program_id.key, // &spl_token::id(),
+                    &mint.key,
+                    &recipient_account.key,
+                    &pda_account.key,
+                    &[],
+                )?;
+
+                invoke_signed(
+                    &instruction,
+                    &[
+                        initializer.clone(),
+                        ibport_data_account.clone(),
+                        subscriber_contract_program_id.clone(),
+                        mint.clone(),
+                        recipient_account.clone(),
+                        pda_account.clone(),
+                    ],
+                    &[&[b"ibport"]]
+                )?;
+
+                NebulaContract::pack(
+                    nebula_contract_info,
+                    &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+                )?;
+
+                Ok(())
+            },
+            Err(err) => Err(err.into())
+        }
     }
 
     pub fn process_nebula_subscription(
@@ -250,9 +301,9 @@ impl NebulaProcessor {
         subscriber_address: Pubkey,
         min_confirmations: u8,
         reward: u64,
+        subscription_id: SubscriptionID,
         _program_id: &Pubkey,
     ) -> ProgramResult {
-        // let accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
         let initializer = next_account_info(account_info_iter)?;
 
@@ -264,20 +315,23 @@ impl NebulaProcessor {
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
-        // nebula_contract_info.
-        // let mut subscription_id = nebula_contract_info.new_subscription_id();
-
         msg!("generating subscription id");
         msg!("subscribing");
 
         nebula_contract_info.subscribe(
-            *nebula_contract_account.key,
+            *initializer.key,
             subscriber_address,
             min_confirmations,
             reward,
+            &subscription_id,
         )?;
 
         msg!("successfully subscribed!");
+
+        NebulaContract::pack(
+            nebula_contract_info,
+            &mut nebula_contract_account.try_borrow_mut_data()?[0..NebulaContract::LEN],
+        )?;
 
         Ok(())
     }
@@ -346,6 +400,7 @@ impl NebulaProcessor {
                 address,
                 min_confirmations,
                 reward,
+                subscription_id,
             } => {
                 msg!("Instruction: Subscribe To Nebula");
 
@@ -354,6 +409,7 @@ impl NebulaProcessor {
                     address,
                     min_confirmations,
                     reward,
+                    subscription_id,
                     program_id,
                 )
             }

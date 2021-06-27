@@ -7,8 +7,10 @@ pub enum NebulaError {
     /// Failed to send value to subs
     #[error("Failed to send value to subs")]
     SendValueToSubsFailed,
+    
     #[error("Sub id exists")]
     SubscriberExists,
+
     #[error("Subscribe failed")]
     SubscribeFailed,
 
@@ -17,11 +19,16 @@ pub enum NebulaError {
 
     #[error("Value has been already sent to subscriber")]
     SubscriberValueBeenSent,
+
     #[error("Invalid subscription id")]
     InvalidSubscriptionID,
 
     #[error("No such instruction index")]
     InvalidInstructionIndex,
+
+    #[error("Invalid subscription target program id")]
+    InvalidSubscriptionProgramID
+
 }
 
 impl From<NebulaError> for ProgramError {

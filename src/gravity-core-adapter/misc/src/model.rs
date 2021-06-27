@@ -83,12 +83,9 @@ pub struct RecordHandler<K, V> {
 }
 
 
-impl<K: Default + Clone + Copy, V: Default + Clone + Copy> RecordHandler<K, V> {
+impl<K: Default + Clone, V: Default + Clone> RecordHandler<K, V> {
     
     pub fn new() -> RecordHandler<K, V> {
-        // let k: [K; MAX_RECORDS_COUNT] = [K::default(); MAX_RECORDS_COUNT];
-        // let v: [V; MAX_RECORDS_COUNT] = [V::default(); MAX_RECORDS_COUNT];
-
         RecordHandler::default()
     }
     
@@ -104,25 +101,9 @@ impl<K: Default + Clone + Copy, V: Default + Clone + Copy> RecordHandler<K, V> {
     pub fn is_full(&self) -> bool {
         self.cap() == self.len()
     }
-
-    // just forgots the first record (implicit record remove)
-    // pub fn reallocate(&mut self) {
-    //     let mut new_k: [K; MAX_RECORDS_COUNT] = [K::default(); MAX_RECORDS_COUNT];
-    //     let mut new_v: [V; MAX_RECORDS_COUNT] = [V::default(); MAX_RECORDS_COUNT];
-
-    //     for (key_i, key) in self.k.iter().enumerate() {
-    //         if key_i == 0 { continue; };
-
-    //         new_k[key_i - 1] = *key;
-    //         new_v[key_i - 1] = self.v[key_i];
-    //     }
-
-    //     self.k = new_k;
-    //     self.v = new_v;
-    // }
 }
 
-impl<K: PartialEq + Default + Clone + Copy, V: Default + Clone + Copy> AbstractRecordHandler<K, V> for RecordHandler<K, V> {
+impl<K: PartialEq + Default + Clone, V: Default + Clone> AbstractRecordHandler<K, V> for RecordHandler<K, V> {
     fn insert(&mut self, key: K, val: V) {
         // overwrite logic
         for (pos, internal_key) in self.k.iter().enumerate() {

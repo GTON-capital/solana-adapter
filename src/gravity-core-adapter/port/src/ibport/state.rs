@@ -34,7 +34,7 @@ pub enum RequestStatus {
     New,
     Rejected,
     Success,
-    Returned
+     
 }
 
 impl Default for RequestStatus {
@@ -69,7 +69,7 @@ trait RequestCountConstrained {
 
     fn unprocessed_requests_limit() -> usize {
         Self::MAX_IDLE_REQUESTS_COUNT
-    }
+    }                                                                                                                                                                                                             
 
     fn count_constrained_entities(&self) -> Vec<usize>;
 
@@ -87,17 +87,12 @@ trait RequestCountConstrained {
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
-    pub nebula_address: Pubkey,
-    pub token_address: Pubkey,
+    pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
+    pub token_address: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
     pub initializer_pubkey: Pubkey,
 
-    // pub swap_status: Vec<RequestStatus>,
-    // pub requests: Vec<UnwrapRequest>,
-    // pub swap_status: [RequestStatus; 20],
-    // pub requests: [UnwrapRequest; 20],
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
-    // pub requests_queue: RequestsQueue<u8>,
 }
 
 impl RequestCountConstrained for IBPortContract {
@@ -109,7 +104,7 @@ impl RequestCountConstrained for IBPortContract {
         ];
         res
     }
-}
+} 
 
 impl PartialStorage for IBPortContract {
     const DATA_RANGE: std::ops::Range<usize> = 0..1000;
@@ -154,78 +149,49 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn attach_data<F: Fn(u64, &AccountInfo) -> ProgramResult>(&mut self, byte_data: &Vec<u8>, mint_callback_fn: F) -> ProgramResult {
-        let byte_data = byte_data.to_vec();
-        let owner_bytes: [u8; 32] = [1; 32];
-        let owner = &Pubkey::new(&owner_bytes);
+    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
         let mut pos = 0;
-        
-        /**
-         * We use iterative approach
-         * in order to process all the requests in one invocation
-         */
-        while pos < byte_data.len() {
-            let action = byte_data[pos];
-            pos += 1;
+        let action = byte_data[pos];
+        pos += 1;
 
-            if "m" == std::str::from_utf8(&[action]).unwrap() {
-                let swap_id = array_ref![byte_data, pos, 16];
+        if "m" == std::str::from_utf8(&[action]).unwrap() {
+            let swap_id = array_ref![byte_data, pos, 16];
 
-                pos += 16;
-                
-                let swap_status = self.swap_status.get(swap_id);
+            pos += 16;
+            
+            let swap_status = self.swap_status.get(swap_id);
 
-                if swap_status.is_some() {
-                    return Err(PortError::InvalidRequestStatus.into());
-                }
-
-                let raw_amount = array_ref![byte_data, pos, 8];
-                let ui_amount = f64::from_le_bytes(*raw_amount);
-
-                let decimals = 8;
-                let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-                msg!("decimals: {:} \n", decimals);
-                msg!("ui_amount: {:} \n", ui_amount);
-                msg!("amount: {:} \n", amount);
-
-                pos += 8;
-
-                let receiver = array_ref![byte_data, pos, 32];
-                pos += 32;
-
-                let recipient = &Pubkey::new(&*receiver);
-                let mut lamports: u64 = 0;
-                let recipient_account = AccountInfo::new(
-                    recipient,
-                    false, // is_signer
-                    true, // is_writable
-                    &mut lamports, // lamports
-                    &mut [], // data
-                    owner, // owner
-                    false, // executable,
-                    0, // rent_epoch
-                );
-
-                match mint_callback_fn(amount, &recipient_account) {
-                    Ok(_) => {
-                        self.swap_status.insert(*swap_id, RequestStatus::Success);
-                        return Ok(());
-                    },
-                    Err(err) => {
-                        return Err(err);
-                    }
-                };
+            if swap_status.is_some() {
+                return Err(PortError::InvalidRequestStatus.into());
             }
-        }
-        
 
-        Ok(())
+            let raw_amount = array_ref![byte_data, pos, 8];
+            let ui_amount = f64::from_le_bytes(*raw_amount);
+
+            let decimals = 8;
+            let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+
+            pos += 8;
+
+            let receiver = array_ref![byte_data, pos, 32];
+
+            if input_pubkey.to_bytes() != *receiver {
+                return Err(PortError::ErrorOnReceiverUnpack.into());
+            }
+            
+            *input_amount = amount;
+
+            return Ok(());
+        }
+
+        Err(PortError::InvalidDataOnAttach.into())
     }
 
     pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         let mut record_id: [u8; 16] = Default::default();
-        record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
+
+        // record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
+        record_id.copy_from_slice(&receiver[0..16]);
 
         self.requests.insert(record_id, UnwrapRequest {
             destination_address: *receiver,
