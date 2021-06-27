@@ -276,6 +276,8 @@ impl NebulaProcessor {
 
                 let instruction = attach_value(
                     &data_value,
+                    initializer.key,
+                    ibport_data_account.key,
                     &subscriber_contract_program_id.key,
                     target_program_id.key, // &spl_token::id(),
                     &mint.key,
@@ -297,6 +299,8 @@ impl NebulaProcessor {
                 invoke_signed(
                     &instruction,
                     &[
+                        initializer.clone(),
+                        ibport_data_account.clone(),
                         subscriber_contract_program_id.clone(),
                         mint.clone(),
                         recipient_account.clone(),

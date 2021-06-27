@@ -165,15 +165,23 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         msg!("got the attach!");
-        return Ok(());
 
         let initializer = next_account_info(account_info_iter)?;
+        let acc2 = next_account_info(account_info_iter)?;
+        let acc3 = next_account_info(account_info_iter)?;
 
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+        msg!("initializer: {:?}", initializer.key);
+        // msg!("iterator length: {:?}", accounts.len());
+        msg!("acc2: {:?}", acc2.key);
+        msg!("acc3: {:?}", acc3.key);
+        // msg!("acc4: {:?}", acc4.key);
+        return Ok(());
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
+
+        msg!("ibport_contract_account: {:?}", ibport_contract_account.key);
+
+        return Ok(());
 
         validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
@@ -189,6 +197,10 @@ impl IBPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+
+        // msg!("mint: {:?}", mint.key);
+        // msg!("recipient_account: {:?}", recipient_account.key);
+        // msg!("pda_account: {:?}", pda_account.key);
 
         msg!("Creating mint instruction");
 
