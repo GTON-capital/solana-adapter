@@ -276,8 +276,8 @@ impl NebulaProcessor {
 
                 let instruction = attach_value(
                     &data_value,
-                    initializer.key,
-                    ibport_data_account.key,
+                    &initializer.key,
+                    &ibport_data_account.key,
                     &subscriber_contract_program_id.key,
                     target_program_id.key, // &spl_token::id(),
                     &mint.key,
@@ -285,16 +285,6 @@ impl NebulaProcessor {
                     &pda_account.key,
                     &[],
                 )?;
-
-
-                // byte_data: &Vec<u8>,
-                // target_program_id: &Pubkey,  // IB Port binary
-                // initializer: &Pubkey,
-                // token_program_id: &Pubkey, // actually spl_token::id()
-                // mint: &Pubkey, // actually the result of spl-token create-token (cli)
-                // recipient_account: &Pubkey,
-                // ibport_pda_account: &Pubkey,
-                // signer_pubkeys: &[&Pubkey],
 
                 invoke_signed(
                     &instruction,
@@ -305,7 +295,6 @@ impl NebulaProcessor {
                         mint.clone(),
                         recipient_account.clone(),
                         pda_account.clone(),
-                        // target_program_id.clone(),
                     ],
                     &[&[b"ibport"]]
                 )?;

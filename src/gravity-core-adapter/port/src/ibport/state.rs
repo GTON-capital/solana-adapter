@@ -150,57 +150,41 @@ impl IBPortContract {
     }
 
     pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
-        let byte_data = byte_data.to_vec();
         let mut pos = 0;
-        
-        /**
-         * We use iterative approach
-         * in order to process all the requests in one invocation
-         */
-        while pos < byte_data.len() {
-            let action = byte_data[pos];
-            pos += 1;
+        let action = byte_data[pos];
+        pos += 1;
 
-            if "m" == std::str::from_utf8(&[action]).unwrap() {
-                let swap_id = array_ref![byte_data, pos, 16];
+        if "m" == std::str::from_utf8(&[action]).unwrap() {
+            let swap_id = array_ref![byte_data, pos, 16];
 
-                pos += 16;
-                
-                let swap_status = self.swap_status.get(swap_id);
+            pos += 16;
+            
+            let swap_status = self.swap_status.get(swap_id);
 
-                if swap_status.is_some() {
-                    return Err(PortError::InvalidRequestStatus.into());
-                }
-
-                let raw_amount = array_ref![byte_data, pos, 8];
-                let ui_amount = f64::from_le_bytes(*raw_amount);
-
-                let decimals = 8;
-                let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-                msg!("decimals: {:} \n", decimals);
-                msg!("ui_amount: {:} \n", ui_amount);
-                msg!("amount: {:} \n", amount);
-
-                pos += 8;
-
-                let receiver = array_ref![byte_data, pos, 32];
-                pos += 32;
-
-                let built_token_pubkey = Pubkey::new(&*receiver);
-
-                if *input_pubkey != built_token_pubkey {
-                    return Err(PortError::ErrorOnReceiverUnpack.into());
-                }
-                
-                *input_amount = amount;
-
-                return Ok(());
+            if swap_status.is_some() {
+                return Err(PortError::InvalidRequestStatus.into());
             }
-        }
-        
 
-        Ok(())
+            let raw_amount = array_ref![byte_data, pos, 8];
+            let ui_amount = f64::from_le_bytes(*raw_amount);
+
+            let decimals = 8;
+            let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+
+            pos += 8;
+
+            let receiver = array_ref![byte_data, pos, 32];
+
+            if input_pubkey.to_bytes() != *receiver {
+                return Err(PortError::ErrorOnReceiverUnpack.into());
+            }
+            
+            *input_amount = amount;
+
+            return Ok(());
+        }
+
+        Err(PortError::InvalidDataOnAttach.into())
     }
 
     pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {

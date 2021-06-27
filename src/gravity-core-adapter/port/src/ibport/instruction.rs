@@ -161,7 +161,7 @@ pub fn attach_value(
 
     let mut accounts = Vec::with_capacity(6 + signer_pubkeys.len());
     accounts.push(AccountMeta::new_readonly(*oracle, true));
-    accounts.push(AccountMeta::new_readonly(*subscriber_data_account, true));
+    accounts.push(AccountMeta::new(*subscriber_data_account, false));
     accounts.push(AccountMeta::new_readonly(*token_program_id, false));
     accounts.push(AccountMeta::new(*mint, false));
     accounts.push(AccountMeta::new(*recipient_account, false));

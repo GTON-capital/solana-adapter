@@ -153,7 +153,7 @@ impl NebulaContractInstruction {
                 );
 
                 let data_value =
-                    extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, 16])?;
+                    extract_from_range(rest, data_value, |x: &[u8]| *array_ref![x, 0, NebulaContractInstruction::DATA_HASH_ALLOC])?;
                 let data_value = data_value.to_vec();
 
                 let data_type =

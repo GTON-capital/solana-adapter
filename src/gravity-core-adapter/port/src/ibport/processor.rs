@@ -165,32 +165,24 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         msg!("got the attach!");
-
         let initializer = next_account_info(account_info_iter)?;
-        let acc2 = next_account_info(account_info_iter)?;
-        let acc3 = next_account_info(account_info_iter)?;
 
-        msg!("initializer: {:?}", initializer.key);
-        // msg!("iterator length: {:?}", accounts.len());
-        msg!("acc2: {:?}", acc2.key);
-        msg!("acc3: {:?}", acc3.key);
-        // msg!("acc4: {:?}", acc4.key);
-        return Ok(());
+        // TODO: Caller validation (1)
+        // if !initializer.is_signer {
+        //     return Err(ProgramError::MissingRequiredSignature);
+        // }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        msg!("ibport_contract_account: {:?}", ibport_contract_account.key);
-
-        return Ok(());
 
         validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        if *initializer.key != ibport_contract_info.nebula_address {
-            return Err(PortError::AccessDenied.into());
-        }
+        // TODO: Caller validation (2)
+        // if *initializer.key != ibport_contract_info.nebula_address {
+        //     return Err(PortError::AccessDenied.into());
+        // }
 
         // Get the accounts to mint
         let token_program_id = next_account_info(account_info_iter)?;
@@ -198,14 +190,10 @@ impl IBPortProcessor {
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
 
-        // msg!("mint: {:?}", mint.key);
-        // msg!("recipient_account: {:?}", recipient_account.key);
-        // msg!("pda_account: {:?}", pda_account.key);
-
         msg!("Creating mint instruction");
 
         let mut amount: u64 = 0;
-
+        
         ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         let mint_ix = mint_to(
@@ -216,8 +204,6 @@ impl IBPortProcessor {
             &[],
             amount,
         )?;
-
-        return Ok(());
 
         invoke_signed(
             &mint_ix,
