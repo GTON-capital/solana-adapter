@@ -147,21 +147,28 @@ impl IBPortContractInstruction {
 }
 
 pub fn attach_value(
-    target_program_id: &Pubkey,
+    ibport_program_id: &Pubkey,
     byte_data: &Vec<u8>,
-    rest_accounts: &[AccountInfo],
+    mint_pubkey: &Pubkey,
+    account_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let data = IBPortContractInstruction::AttachValue { byte_data: byte_data.clone()  }.pack();
 
-    let mut accounts = Vec::with_capacity(rest_accounts.len());
-
-    for r_acc in rest_accounts.iter() {
-        accounts.push(AccountMeta::new(*r_acc.key, false));
-
+    let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*mint_pubkey, false));
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
     }
 
     Ok(Instruction {
-        program_id: *target_program_id,
+        program_id: *ibport_program_id,
         accounts,
         data,
     })

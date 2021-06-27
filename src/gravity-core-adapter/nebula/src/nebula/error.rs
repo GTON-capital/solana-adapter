@@ -19,6 +19,7 @@ pub enum NebulaError {
 
     #[error("Value has been already sent to subscriber")]
     SubscriberValueBeenSent,
+
     #[error("Invalid subscription id")]
     InvalidSubscriptionID,
 
@@ -27,6 +28,7 @@ pub enum NebulaError {
 
     #[error("Invalid subscription target program id")]
     InvalidSubscriptionProgramID
+
 }
 
 impl From<NebulaError> for ProgramError {
