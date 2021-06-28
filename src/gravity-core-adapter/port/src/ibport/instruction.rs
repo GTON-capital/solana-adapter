@@ -28,6 +28,7 @@ pub enum IBPortContractInstruction {
     InitContract {
         nebula_address: Pubkey,
         token_address: Pubkey,
+        oracles: Vec<Pubkey>,
     },
     CreateTransferUnwrapRequest {
         amount: f64,
@@ -70,9 +71,23 @@ impl IBPortContractInstruction {
                     Pubkey::new(&rest[ranges[1].clone()])
                 );
 
-                Self::InitContract {
-                    nebula_address,
-                    token_address,
+                if rest.len() == 64 {
+                    Self::InitContract {
+                        nebula_address,
+                        token_address,
+                        oracles: Vec::new(),
+                    }
+                } else {
+                    let oracles_bft = extract_from_range(rest, 64..65, |x: &[u8]| {
+                        u8::from_le_bytes(*array_ref![x, 0, 1])
+                    })?;
+                    let oracles = retrieve_oracles(rest, 65..65 + (oracles_bft as usize * 32), oracles_bft)?;
+
+                    Self::InitContract {
+                        nebula_address,
+                        token_address,
+                        oracles,
+                    }
                 }
             }
             // CreateTransferUnwrapRequest
