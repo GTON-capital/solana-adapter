@@ -55,6 +55,7 @@ impl IBPortProcessor {
         accounts: &[AccountInfo],
         token_address: &Pubkey,
         nebula_address: &Pubkey,
+        oracles: &Vec<Pubkey>,
         _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -73,6 +74,7 @@ impl IBPortProcessor {
 
         ibport_contract_info.token_address = *token_address;
         ibport_contract_info.nebula_address = *nebula_address;
+        ibport_contract_info.oracles = oracles.clone();
         ibport_contract_info.initializer_pubkey = *initializer.key;
 
         msg!("instantiated ib port contract");
@@ -157,6 +159,23 @@ impl IBPortProcessor {
         Ok(())
     }
 
+    fn validate_data_provider(
+        multisig_owner_keys: &Vec<Pubkey>,
+        data_provider: &Pubkey,
+    ) -> Result<(), PortError> {
+        if multisig_owner_keys.len() == 0 {
+            return Ok(());
+        }
+
+        for owner_key in multisig_owner_keys {
+            if *owner_key == *data_provider {
+                return Ok(());
+            }
+        }
+
+        Err(PortError::AccessDenied)
+    }
+
     fn process_attach_value<'a, 't: 'a>(
         accounts: &[AccountInfo<'t>],
         byte_data: &Vec<u8>,
@@ -183,6 +202,10 @@ impl IBPortProcessor {
         // if *initializer.key != ibport_contract_info.nebula_address {
         //     return Err(PortError::AccessDenied.into());
         // }
+        Self::validate_data_provider(
+            &ibport_contract_info.oracles,
+            initializer.key,
+        )?;
 
         // Get the accounts to mint
         let token_program_id = next_account_info(account_info_iter)?;
@@ -385,7 +408,8 @@ impl IBPortProcessor {
         match instruction {
             IBPortContractInstruction::InitContract {
                 token_address,
-                nebula_address
+                nebula_address,
+                oracles,
             } => {
                 msg!("Instruction: Init IB Port Contract");
 
@@ -393,6 +417,7 @@ impl IBPortProcessor {
                     accounts,
                     &token_address,
                     &nebula_address,
+                    &oracles,
                     program_id,
                 )
             }

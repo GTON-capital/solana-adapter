@@ -53,6 +53,7 @@ pub fn extract_from_range<'a, T: std::convert::From<&'a [u8]>, U, F: FnOnce(T) -
     Ok(res)
 }
 
+
 pub fn build_range_from_alloc(allocs: &Vec<usize>) -> Vec<Range<usize>> {
     let mut res = vec![];
 

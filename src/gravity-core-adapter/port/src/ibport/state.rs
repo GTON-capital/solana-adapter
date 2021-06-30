@@ -90,6 +90,7 @@ pub struct IBPortContract {
     pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
     pub token_address: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
     pub initializer_pubkey: Pubkey,
+    pub oracles: Vec<Pubkey>,
 
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,

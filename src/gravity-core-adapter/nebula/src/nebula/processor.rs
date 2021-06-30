@@ -135,6 +135,7 @@ impl NebulaProcessor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
@@ -168,11 +169,8 @@ impl NebulaProcessor {
 
         msg!("incrementing pulse id");
 
-        let clock_info = &accounts[3 + nebula_contract_info.bft as usize];
-        msg!(format!("clock_info: {:}", *clock_info.key).as_str());
-        let clock = &Clock::from_account_info(clock_info)?;
-
-        let current_block = clock.slot;
+        // TODO: find out where to catch timestamp
+        let current_block = 1;
 
         nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id, current_block)?;
 

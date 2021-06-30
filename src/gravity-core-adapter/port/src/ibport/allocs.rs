@@ -9,7 +9,8 @@ pub fn allocation_by_instruction_index(
         // InitContract
         0 => vec![
             IBPortContractInstruction::PUBKEY_ALLOC,
-            IBPortContractInstruction::PUBKEY_ALLOC
+            IBPortContractInstruction::PUBKEY_ALLOC,
+            1,
         ],
         // CreateTransferUnwrapRequest
         1 => vec![
