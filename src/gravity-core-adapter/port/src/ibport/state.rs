@@ -75,8 +75,9 @@ trait RequestCountConstrained {
 
     fn count_is_below_limit(&self) -> bool {
         let entities = self.count_constrained_entities();
-        for x in entities {
-            if x >= Self::unprocessed_requests_limit() {
+
+        for entity_len in entities {
+            if entity_len >= Self::unprocessed_requests_limit() {
                 return false
             }
         }
@@ -100,10 +101,9 @@ impl RequestCountConstrained for IBPortContract {
     const MAX_IDLE_REQUESTS_COUNT: usize = 15;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
-        let res = vec![
+        vec![
             self.swap_status.len()
-        ];
-        res
+        ]
     }
 } 
 
