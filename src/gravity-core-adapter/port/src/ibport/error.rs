@@ -27,6 +27,9 @@ pub enum PortError {
 
     #[error("Request id is already being processed")]
     RequestIDIsAlreadyBeingProcessed,
+
+    #[error("Destination chain request confirmation failed: no such request ID")]
+    RequestIDForConfirmationIsInvalid,
 }
 
 impl From<PortError> for ProgramError {

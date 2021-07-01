@@ -33,14 +33,14 @@ pub enum IBPortContractInstruction {
     CreateTransferUnwrapRequest {
         request_id: [u8; 16],
         amount: f64,
-        receiver: ForeignAddress
+        receiver: ForeignAddress,
     },
     AttachValue {
-        byte_data: Vec<u8>
+        byte_data: Vec<u8>,
     },
-    // ConfirmDestinationChainRequest {
-    //     byte_data: Vec<u8>
-    // }
+    ConfirmDestinationChainRequest {
+        request_id: [u8; 16],
+    }
 }
 
 impl IBPortContractInstruction {
@@ -100,21 +100,19 @@ impl IBPortContractInstruction {
             }
             // AttachValue
             2 => {
-                // let allocs = allocation_by_instruction_index((*tag).into(), None)?;
-                // let ranges = build_range_from_alloc(&allocs);
-                // let byte_data = *array_ref![rest[ranges[0].clone()], 0, 80];
                 let byte_data = rest.to_vec();
 
                 Self::AttachValue { byte_data }
             }
             // ConfirmDestinationChainRequest
-            // 3 => {
-            //     let allocs = allocation_by_instruction_index((*tag).into(), None)?;
-            //     let ranges = build_range_from_alloc(&allocs);
-            //     let new_owner = Pubkey::new(&rest[ranges[0].clone()]);
+            3 => {
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                let ranges = build_range_from_alloc(&allocs);
 
-            //     Self::ConfirmDestinationChainRequest { new_owner }
-            // }
+                let request_id = *array_ref![rest[ranges[2].clone()], 0, 16];
+
+                Self::ConfirmDestinationChainRequest { request_id }
+            }
             _ => return Err(InvalidInstruction.into()),
         })
     }

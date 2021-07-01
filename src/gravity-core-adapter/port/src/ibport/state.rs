@@ -190,6 +190,19 @@ impl IBPortContract {
         Err(PortError::InvalidDataOnAttach.into())
     }
 
+    pub fn drop_processed_request(&mut self, request_id: &[u8; 16]) -> Result<(), PortError>  {
+        let (request_drop_res, swap_status_drop_res) = (
+            self.requests.drop(request_id),
+            self.swap_status.drop(request_id)
+        );
+
+        if request_drop_res.is_none() || swap_status_drop_res.is_none() {
+            return Err(PortError::RequestIDForConfirmationIsInvalid.into());
+        }
+
+        Ok(())
+    }
+
     pub fn create_transfer_unwrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         self.validate_requests_count()?;
 

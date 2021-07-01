@@ -20,9 +20,9 @@ pub fn allocation_by_instruction_index(
         ],
         // AttachValue
         2 => vec![IBPortContractInstruction::ATTACHED_DATA_ALLOC],
-        // TransferTokenOwnership
+        // ConfirmDestinationChainRequest
         3 => vec![
-            IBPortContractInstruction::PUBKEY_ALLOC
+            16
         ],
         // 4 => vec![
         //     IBPortContractInstruction::PUBKEY_ALLOC,
