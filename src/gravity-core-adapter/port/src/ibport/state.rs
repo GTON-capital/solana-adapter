@@ -182,24 +182,27 @@ impl IBPortContract {
             
             *input_amount = amount;
 
+            // drop
+
             return Ok(());
         }
 
         Err(PortError::InvalidDataOnAttach.into())
     }
 
-    pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
-        let mut record_id: [u8; 16] = Default::default();
+    pub fn create_transfer_unwrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
+        self.validate_requests_count()?;
 
-        // record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
-        record_id.copy_from_slice(&receiver[0..16]);
+        if self.requests.contains_key(record_id) {
+            return Err(PortError::RequestIDIsAlreadyBeingProcessed.into());
+        }
 
-        self.requests.insert(record_id, UnwrapRequest {
+        self.requests.insert(*record_id, UnwrapRequest {
             destination_address: *receiver,
             origin_address: *sender_data_account,
             amount
         });
-        self.swap_status.insert(record_id, RequestStatus::New);
+        self.swap_status.insert(*record_id, RequestStatus::New);
 
         msg!("swap len: {:} \n", self.swap_status.len());
         msg!("requests len: {:} \n", self.requests.len());

@@ -23,7 +23,7 @@ use solana_gravity_contract::gravity::{
 };
 
 use crate::nebula::instruction::NebulaContractInstruction;
-use crate::nebula::state::NebulaContract;
+use crate::nebula::state::{NebulaContract, Pulse};
 use crate::nebula::error::NebulaError;
 use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
@@ -52,6 +52,8 @@ impl NebulaProcessor {
         nebula_contract_info.is_initialized = true;
         nebula_contract_info.initializer_pubkey = *initializer.key;
         nebula_contract_info.bft = oracles_bft;
+
+        nebula_contract_info.data_type = nebula_data_type;
 
         nebula_contract_info.oracles = initial_oracles.clone();
         nebula_contract_info.gravity_contract = *gravity_contract_data_account;
@@ -170,9 +172,9 @@ impl NebulaProcessor {
         msg!("incrementing pulse id");
 
         // TODO: find out where to catch timestamp
-        let current_block = 1;
+        // let current_block = 1;
 
-        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id, current_block)?;
+        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id)?;
 
         NebulaContract::pack(
             nebula_contract_info,
@@ -208,16 +210,6 @@ impl NebulaProcessor {
 
         msg!("checking multisig bft count");
 
-        // match MiscProcessor::validate_owner(
-        //     program_id,
-        //     &nebula_contract_multisig_account_pubkey,
-        //     &nebula_contract_multisig_account,
-        //     &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
-        // ) {
-        //     Err(err) => return Err(err),
-        //     _ => {}
-        // };
-
         let nebula_multisig_info =
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
@@ -235,8 +227,6 @@ impl NebulaProcessor {
 
                 // IB Port Binary
                 let subscriber_contract_program_id = next_account_info(account_info_iter)?;
-
-                // return Ok(());
 
                 // IB Port Data Account
                 let ibport_data_account = next_account_info(account_info_iter)?;
@@ -282,6 +272,10 @@ impl NebulaProcessor {
                     ],
                     &[&[b"ibport"]]
                 )?;
+
+                nebula_contract_info.drop_processed_pulse(&Pulse {
+                    data_hash: data_value.clone(),
+                })?;
 
                 NebulaContract::pack(
                     nebula_contract_info,

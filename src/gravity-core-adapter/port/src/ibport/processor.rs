@@ -94,6 +94,7 @@ impl IBPortProcessor {
 
     fn process_create_transfer_unwrap_request(
         accounts: &[AccountInfo],
+        request_id: &[u8; 16],
         ui_amount: f64,
         receiver: &ForeignAddress,
         _program_id: &Pubkey,
@@ -149,7 +150,7 @@ impl IBPortProcessor {
         )?;
 
         msg!("saving request info");
-        ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
+        ibport_contract_info.create_transfer_unwrap_request(request_id, amount, token_holder.key, receiver)?;
 
         IBPortContract::pack(
             ibport_contract_info,
@@ -187,9 +188,9 @@ impl IBPortProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         // TODO: Caller validation (1)
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
 
@@ -198,10 +199,6 @@ impl IBPortProcessor {
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        // TODO: Caller validation (2)
-        // if *initializer.key != ibport_contract_info.nebula_address {
-        //     return Err(PortError::AccessDenied.into());
-        // }
         Self::validate_data_provider(
             &ibport_contract_info.oracles,
             initializer.key,
@@ -422,6 +419,7 @@ impl IBPortProcessor {
                 )
             }
             IBPortContractInstruction::CreateTransferUnwrapRequest {
+                request_id,
                 amount,
                 receiver
             } => {
@@ -429,6 +427,7 @@ impl IBPortProcessor {
 
                 Self::process_create_transfer_unwrap_request(
                     accounts,
+                    &request_id,
                     amount,
                     &receiver,
                     program_id,

@@ -44,6 +44,9 @@ pub enum NebulaContractInstruction {
         reward: u64,
         subscription_id: SubscriptionID,
     },
+    Unsubscribe {
+        subscription_id: SubscriptionID,
+    },
 }
 
 #[cfg(test)]
@@ -203,6 +206,17 @@ impl NebulaContractInstruction {
                     address,
                     min_confirmations,
                     reward,
+                    subscription_id,
+                }
+            },
+            5 => {
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                let built_range = build_range_from_alloc(&allocs);
+
+                let subscription_id = built_range[0].clone();
+                let subscription_id = extract_from_range(rest, subscription_id, |x: &[u8]| *array_ref![x, 0, 16])?;
+
+                Self::Unsubscribe {
                     subscription_id,
                 }
             }

@@ -25,6 +25,8 @@ pub enum PortError {
     #[error("Error on receiver unpack (mint)")]
     ErrorOnReceiverUnpack,
 
+    #[error("Request id is already being processed")]
+    RequestIDIsAlreadyBeingProcessed,
 }
 
 impl From<PortError> for ProgramError {

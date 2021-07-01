@@ -35,6 +35,9 @@ pub fn allocation_by_instruction_index(
             8,
             NebulaContractInstruction::SUB_ID_ALLOC,
         ],
+        5 => vec![
+            NebulaContractInstruction::SUB_ID_ALLOC,
+        ],
         _ => return Err(NebulaError::InvalidInstructionIndex.into()),
     })
 }
