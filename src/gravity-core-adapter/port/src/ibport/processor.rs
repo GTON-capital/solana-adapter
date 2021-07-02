@@ -246,7 +246,7 @@ impl IBPortProcessor {
 
     fn process_confirm_destination_chain_request(
         accounts: &[AccountInfo],
-        request_id: &[u8; 16],
+        byte_data: &Vec<u8>,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -271,7 +271,7 @@ impl IBPortProcessor {
         )?;
 
         msg!("dropping processed request");
-        ibport_contract_info.drop_processed_request(request_id)?;
+        ibport_contract_info.drop_processed_request(byte_data)?;
         
         IBPortContract::pack(
             ibport_contract_info,
@@ -332,13 +332,13 @@ impl IBPortProcessor {
                 )
             }
             IBPortContractInstruction::ConfirmDestinationChainRequest {
-                request_id
+                byte_data
             } => {
                 msg!("Instruction: ConfirmDestinationChainRequest");
 
                 Self::process_confirm_destination_chain_request(
                     accounts,
-                    &request_id,
+                    &byte_data,
                     program_id,
                 )
             }

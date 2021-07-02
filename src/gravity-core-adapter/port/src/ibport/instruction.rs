@@ -39,9 +39,10 @@ pub enum IBPortContractInstruction {
         byte_data: Vec<u8>,
     },
     ConfirmDestinationChainRequest {
-        request_id: [u8; 16],
+        byte_data: Vec<u8>,
     }
 }
+
 
 impl IBPortContractInstruction {
     pub const PUBKEY_ALLOC: usize = 32;
@@ -106,12 +107,9 @@ impl IBPortContractInstruction {
             }
             // ConfirmDestinationChainRequest
             3 => {
-                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
-                let ranges = build_range_from_alloc(&allocs);
+                let byte_data = rest.to_vec();
 
-                let request_id = *array_ref![rest[ranges[2].clone()], 0, 16];
-
-                Self::ConfirmDestinationChainRequest { request_id }
+                Self::ConfirmDestinationChainRequest { byte_data }
             }
             _ => return Err(InvalidInstruction.into()),
         })

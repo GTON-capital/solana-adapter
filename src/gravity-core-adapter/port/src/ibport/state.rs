@@ -140,6 +140,30 @@ impl Pack for IBPortContract {
     }
 }
 
+pub struct PortOperation<'a> {
+    pub action: u8,
+    pub swap_id: &'a [u8; 16],
+    pub amount: &'a [u8; 8],
+    // receiver: &'a [u8; 32],
+    pub receiver: &'a ForeignAddress,
+}
+
+impl<'a> PortOperation<'a> {
+    pub fn decimals() -> u8 {
+        8
+    }
+
+    pub fn amount_to_f64(&self) -> f64 {
+        let raw_amount = array_ref![self.amount, 0, 8];
+        f64::from_le_bytes(*raw_amount)
+    }
+
+    pub fn amount_to_u64(&self) -> u64 {
+        let decimals = Self::decimals();
+        spl_token::ui_amount_to_amount(self.amount_to_f64(), decimals)
+    }
+}
+
 
 impl IBPortContract {
 
@@ -150,47 +174,61 @@ impl IBPortContract {
         Ok(())
     }
 
+    pub fn unpack_byte_array(byte_data: &Vec<u8>) -> Result<PortOperation, PortError> {
+        if byte_data.len() < 57 {
+            return Err(PortError::ByteArrayUnpackFailed.into());
+        }
+
+        let mut pos = 0;
+        let action = byte_data[pos];
+        pos += 1;
+
+        let swap_id = array_ref![byte_data, pos, 16];
+        pos += 16;
+        
+        let raw_amount = array_ref![byte_data, pos, 8];
+        pos += 8;
+
+        let receiver = array_ref![byte_data, pos, 32];
+
+        return Ok(PortOperation {
+            action,
+            swap_id,
+            amount: raw_amount,
+            receiver
+        });
+    }
+
     pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
         let mut pos = 0;
         let action = byte_data[pos];
         pos += 1;
 
-        if "m" == std::str::from_utf8(&[action]).unwrap() {
-            let swap_id = array_ref![byte_data, pos, 16];
+        let port_operation = Self::unpack_byte_array(byte_data)?;
 
-            pos += 16;
-            
-            let swap_status = self.swap_status.get(swap_id);
-
-            if swap_status.is_some() {
-                return Err(PortError::InvalidRequestStatus.into());
-            }
-
-            let raw_amount = array_ref![byte_data, pos, 8];
-            let ui_amount = f64::from_le_bytes(*raw_amount);
-
-            let decimals = 8;
-            let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-            pos += 8;
-
-            let receiver = array_ref![byte_data, pos, 32];
-
-            if input_pubkey.to_bytes() != *receiver {
-                return Err(PortError::ErrorOnReceiverUnpack.into());
-            }
-            
-            *input_amount = amount;
-
-            // drop
-
-            return Ok(());
+        if "m" != std::str::from_utf8(&[action]).unwrap() {
+            return Err(PortError::InvalidDataOnAttach.into());
         }
 
-        Err(PortError::InvalidDataOnAttach.into())
+        let swap_status = self.swap_status.get(port_operation.swap_id);
+
+        if swap_status.is_some() {
+            return Err(PortError::InvalidRequestStatus.into());
+        }
+
+        if input_pubkey.to_bytes() != *port_operation.receiver {
+            return Err(PortError::ErrorOnReceiverUnpack.into());
+        }
+        
+        *input_amount = port_operation.amount_to_u64();
+
+        Ok(())
     }
 
-    pub fn drop_processed_request(&mut self, request_id: &[u8; 16]) -> Result<(), PortError>  {
+    pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), PortError>  {
+        let port_operation = Self::unpack_byte_array(byte_array)?;
+        let request_id = port_operation.swap_id;
+
         let (request_drop_res, swap_status_drop_res) = (
             self.requests.drop(request_id),
             self.swap_status.drop(request_id)
@@ -198,6 +236,22 @@ impl IBPortContract {
 
         if request_drop_res.is_none() || swap_status_drop_res.is_none() {
             return Err(PortError::RequestIDForConfirmationIsInvalid.into());
+        }
+
+        let (request_drop_res, swap_status_drop_res) = (request_drop_res.unwrap(), swap_status_drop_res.unwrap());
+
+        if request_drop_res.destination_address != *port_operation.receiver {
+            return Err(PortError::RequestReceiverMismatch.into());
+        }
+
+        if swap_status_drop_res != RequestStatus::New {
+            return Err(PortError::RequestStatusMismatch.into());
+        }
+        
+        let port_amount = port_operation.amount_to_u64();
+
+        if request_drop_res.amount != port_amount {
+            return Err(PortError::RequestAmountMismatch.into());
         }
 
         Ok(())

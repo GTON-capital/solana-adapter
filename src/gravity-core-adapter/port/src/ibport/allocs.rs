@@ -21,9 +21,7 @@ pub fn allocation_by_instruction_index(
         // AttachValue
         2 => vec![IBPortContractInstruction::ATTACHED_DATA_ALLOC],
         // ConfirmDestinationChainRequest
-        3 => vec![
-            16
-        ],
+        3 => vec![IBPortContractInstruction::ATTACHED_DATA_ALLOC],
         // 4 => vec![
         //     IBPortContractInstruction::PUBKEY_ALLOC,
         //     8,
