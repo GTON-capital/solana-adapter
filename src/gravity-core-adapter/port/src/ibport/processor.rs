@@ -79,9 +79,6 @@ impl IBPortProcessor {
 
         msg!("instantiated ib port contract");
 
-        msg!("nebula contract len: {:} \n", IBPortContract::LEN);
-        msg!("get packet len: {:} \n", IBPortContract::get_packed_len());
-
         msg!("packing ib port contract");
 
         IBPortContract::pack(
@@ -132,11 +129,6 @@ impl IBPortProcessor {
             &[],
             amount,
         )?;
-
-        msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
-        msg!(format!("mint: {:} \n", mint.key).as_str());
-        msg!(format!("token_holder: {:} \n", token_holder.key).as_str());
-        msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
 
         invoke_signed(
             &burn_ix,
@@ -193,7 +185,6 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
         validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
@@ -215,6 +206,8 @@ impl IBPortProcessor {
         let mut amount: u64 = 0;
         
         ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
+
+        
 
         let mint_ix = mint_to(
             &token_program_id.key,

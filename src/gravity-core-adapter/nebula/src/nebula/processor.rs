@@ -60,9 +60,6 @@ impl NebulaProcessor {
 
         msg!("instantiated nebula contract");
 
-        msg!("nebula contract len: {:} \n", NebulaContract::LEN);
-        msg!("get packet len: {:} \n", NebulaContract::get_packed_len());
-
         msg!("picking multisig account");
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
 
@@ -205,6 +202,7 @@ impl NebulaProcessor {
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
 
+
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
         let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
@@ -214,10 +212,10 @@ impl NebulaProcessor {
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
         NebulaContract::validate_data_provider(
-            nebula_multisig_info.signers.to_vec(),
+            &nebula_multisig_info.signers.to_vec(),
             initializer.key,
         )?;
-
+        
         match nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id) {
             Ok(subscription) => {
                 let destination_program_id = subscription.contract_address;
@@ -238,15 +236,6 @@ impl NebulaProcessor {
                 if *pda_account.key != destination_program_id {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
-
-                msg!("ibport_data_account {:?} \n", ibport_data_account.key);
-                msg!("data_value {:?} \n", data_value);
-                msg!("destination_program_id {:?} \n", destination_program_id);
-                msg!("initializer {:?} \n", initializer.key);
-                msg!("subscriber_contract_program_id {:?} \n", subscriber_contract_program_id.key);
-                msg!("mint {:?} \n", mint.key);
-                msg!("recipient_account {:?} \n", recipient_account.key);
-                msg!("pda_account {:?} \n", pda_account.key);
 
                 let instruction = attach_value(
                     &data_value,

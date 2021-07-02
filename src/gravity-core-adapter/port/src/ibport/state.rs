@@ -271,9 +271,6 @@ impl IBPortContract {
         });
         self.swap_status.insert(*record_id, RequestStatus::New);
 
-        msg!("swap len: {:} \n", self.swap_status.len());
-        msg!("requests len: {:} \n", self.requests.len());
-
         Ok(())
     }
 

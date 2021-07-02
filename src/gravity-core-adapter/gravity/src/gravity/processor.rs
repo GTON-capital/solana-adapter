@@ -95,9 +95,6 @@ impl GravityProcessor {
 
         msg!("instantiated gravity contract");
 
-        msg!("gravity contract len: {:} \n", GravityContract::LEN);
-        msg!("get packet len: {:} \n", GravityContract::get_packed_len());
-
         msg!("picking multisig account");
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 

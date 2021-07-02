@@ -141,11 +141,11 @@ impl NebulaContract {
     }
 
     pub fn validate_data_provider(
-        multisig_owner_keys: Vec<Pubkey>,
+        multisig_owner_keys: &Vec<Pubkey>,
         data_provider: &Pubkey,
     ) -> Result<(), NebulaError> {
         for owner_key in multisig_owner_keys {
-            if owner_key == *data_provider {
+            if owner_key == data_provider {
                 return Ok(());
             }
         }
