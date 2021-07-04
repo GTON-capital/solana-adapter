@@ -1,4 +1,5 @@
 use solana_program::{
+    log::sol_log_compute_units,
     account_info::{next_account_info, AccountInfo},
     clock::{Clock, Slot},
     entrypoint::ProgramResult,
@@ -16,17 +17,18 @@ use spl_token::{
     state::Multisig,
 };
 
-use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
+use gravity_misc::validation::validate_contract_emptiness;
 use solana_gravity_contract::gravity::{
     error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
     state::GravityContract,
 };
 
 use crate::nebula::instruction::NebulaContractInstruction;
-use crate::nebula::state::NebulaContract;
+use crate::nebula::state::{NebulaContract, Pulse};
 use crate::nebula::error::NebulaError;
 use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::validation::PDAResolver;
 
 pub struct NebulaProcessor;
 
@@ -49,17 +51,16 @@ impl NebulaProcessor {
 
         let mut nebula_contract_info = NebulaContract::default();
 
-        nebula_contract_info.is_initialized = true;
+        nebula_contract_info.is_state_initialized = true;
         nebula_contract_info.initializer_pubkey = *initializer.key;
         nebula_contract_info.bft = oracles_bft;
+
+        nebula_contract_info.data_type = nebula_data_type;
 
         nebula_contract_info.oracles = initial_oracles.clone();
         nebula_contract_info.gravity_contract = *gravity_contract_data_account;
 
         msg!("instantiated nebula contract");
-
-        msg!("nebula contract len: {:} \n", NebulaContract::LEN);
-        msg!("get packet len: {:} \n", NebulaContract::get_packed_len());
 
         msg!("picking multisig account");
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
@@ -93,8 +94,6 @@ impl NebulaProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
 
         let mut nebula_contract_info =
             NebulaContract::unpack(&nebula_contract_account.data.borrow()[0..NebulaContract::LEN])?;
@@ -140,8 +139,6 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
-
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
@@ -170,9 +167,9 @@ impl NebulaProcessor {
         msg!("incrementing pulse id");
 
         // TODO: find out where to catch timestamp
-        let current_block = 1;
+        // let current_block = 1;
 
-        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id, current_block)?;
+        nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id)?;
 
         NebulaContract::pack(
             nebula_contract_info,
@@ -197,8 +194,6 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
-
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],
         )?;
@@ -208,26 +203,18 @@ impl NebulaProcessor {
 
         msg!("checking multisig bft count");
 
-        // match MiscProcessor::validate_owner(
-        //     program_id,
-        //     &nebula_contract_multisig_account_pubkey,
-        //     &nebula_contract_multisig_account,
-        //     &accounts[3..3 + nebula_contract_info.bft as usize].to_vec(),
-        // ) {
-        //     Err(err) => return Err(err),
-        //     _ => {}
-        // };
-
         let nebula_multisig_info =
             Multisig::unpack(&nebula_contract_multisig_account.try_borrow_data()?)?;
 
         NebulaContract::validate_data_provider(
-            nebula_multisig_info.signers.to_vec(),
+            &nebula_multisig_info.signers.to_vec(),
             initializer.key,
         )?;
 
-        match nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id) {
+        
+        match nebula_contract_info.send_value_to_subs(pulse_id, subscription_id) {
             Ok(subscription) => {
+
                 let destination_program_id = subscription.contract_address;
 
                 // TOKEN - spl_token::id()
@@ -235,8 +222,6 @@ impl NebulaProcessor {
 
                 // IB Port Binary
                 let subscriber_contract_program_id = next_account_info(account_info_iter)?;
-
-                // return Ok(());
 
                 // IB Port Data Account
                 let ibport_data_account = next_account_info(account_info_iter)?;
@@ -248,15 +233,6 @@ impl NebulaProcessor {
                 if *pda_account.key != destination_program_id {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
-
-                msg!("ibport_data_account {:?} \n", ibport_data_account.key);
-                msg!("data_value {:?} \n", data_value);
-                msg!("destination_program_id {:?} \n", destination_program_id);
-                msg!("initializer {:?} \n", initializer.key);
-                msg!("subscriber_contract_program_id {:?} \n", subscriber_contract_program_id.key);
-                msg!("mint {:?} \n", mint.key);
-                msg!("recipient_account {:?} \n", recipient_account.key);
-                msg!("pda_account {:?} \n", pda_account.key);
 
                 let instruction = attach_value(
                     &data_value,
@@ -280,8 +256,14 @@ impl NebulaProcessor {
                         recipient_account.clone(),
                         pda_account.clone(),
                     ],
-                    &[&[b"ibport"]]
+                    &[&[
+                        PDAResolver::IBPort.bump_seeds(),
+                    ]]
                 )?;
+
+                nebula_contract_info.drop_processed_pulse(&Pulse {
+                    data_hash: data_value.clone(),
+                })?;
 
                 NebulaContract::pack(
                     nebula_contract_info,
@@ -306,8 +288,6 @@ impl NebulaProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&nebula_contract_account.data.borrow()[..])?;
 
         let mut nebula_contract_info = NebulaContract::unpack(
             &nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN],

@@ -68,6 +68,8 @@ pub trait AbstractRecordHandler<K, V> {
     fn get(&self, key: &K) -> Option<&V> {
         None
     }
+
+    fn drop(&mut self, key: &K) -> Option<V>;
 }
 
 
@@ -126,10 +128,30 @@ impl<K: PartialEq + Default + Clone, V: Default + Clone> AbstractRecordHandler<K
         return false
     }
 
+    // retrieve element or "None" is returned
     fn get(&self, key: &K) -> Option<&V> {
         for (pos, internal_key) in self.k.iter().enumerate() {
             if internal_key == key {
                 return Some(&self.v[pos]);
+            }
+        }
+        None
+    }
+
+    // drop value and return it, if nothing dropped - "None" is returned
+    fn drop(&mut self, key: &K) -> Option<V> {
+        if self.k.len() == 0 {
+            return None;
+        }
+
+        for (pos, internal_key) in self.k.iter().enumerate() {
+            if internal_key == key {
+                let res = self.v[pos].clone();
+
+                self.k.remove(pos);
+                self.v.remove(pos);
+
+                return Some(res);
             }
         }
         None

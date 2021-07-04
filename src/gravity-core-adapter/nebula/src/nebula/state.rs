@@ -27,15 +27,13 @@ pub struct Subscription {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct Pulse {
     pub data_hash: Vec<u8>,
-    pub height: u64,
+    // pub height: u64,
 }
 
 pub type NebulaQueue<T> = Vec<T>;
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct NebulaContract {
-    pub rounds_dict: RecordHandler<PulseID, bool>,
-    subscriptions_queue: NebulaQueue<SubscriptionID>,
     pub oracles: Vec<Pubkey>,
 
     pub bft: u8,
@@ -44,14 +42,13 @@ pub struct NebulaContract {
     pub data_type: DataType,
     pub last_round: PulseID,
 
-    subscription_ids: Vec<SubscriptionID>,
     pub last_pulse_id: PulseID,
 
     subscriptions_map: RecordHandler<SubscriptionID, Subscription>,
-    pulses_map: RecordHandler<PulseID, Pulse>,
-    is_pulse_sent: RecordHandler<PulseID, bool>,
 
-    pub is_initialized: bool,
+    pulses_map: RecordHandler<Pulse, PulseID>,
+
+    pub is_state_initialized: bool,
     pub initializer_pubkey: Pubkey,
 }
 
@@ -63,8 +60,7 @@ impl Sealed for NebulaContract {}
 
 impl IsInitialized for NebulaContract {
     fn is_initialized(&self) -> bool {
-        // self.is_initialized
-        return true;
+        self.is_state_initialized
     }
 }
 
@@ -93,16 +89,14 @@ impl NebulaContract {
         &mut self,
         data_hash: Vec<u8>,
         last_pulse_id: u64,
-        block_number: u64,
     ) -> Result<(), NebulaError> {
         let new_pulse_id = last_pulse_id + 1;
 
         self.pulses_map.insert(
-            new_pulse_id,
             Pulse {
                 data_hash,
-                height: block_number,
             },
+            new_pulse_id,
         );
 
         self.last_pulse_id = new_pulse_id;
@@ -111,6 +105,14 @@ impl NebulaContract {
     }
 
     const SERIALIZE_CONTEXT: u16 = 50;
+
+    pub fn unsubscribe(
+        &mut self,
+        subscription_id: &SubscriptionID,
+    ) -> Result<(), NebulaError> {
+        // Ok(())
+        Err(NebulaError::UnsubscribeIsNotAvailable)
+    }
 
     pub fn subscribe(
         &mut self,
@@ -138,11 +140,11 @@ impl NebulaContract {
     }
 
     pub fn validate_data_provider(
-        multisig_owner_keys: Vec<Pubkey>,
+        multisig_owner_keys: &Vec<Pubkey>,
         data_provider: &Pubkey,
     ) -> Result<(), NebulaError> {
         for owner_key in multisig_owner_keys {
-            if owner_key == *data_provider {
+            if owner_key == data_provider {
                 return Ok(());
             }
         }
@@ -150,30 +152,29 @@ impl NebulaContract {
         Err(NebulaError::DataProviderForSendValueToSubsIsInvalid)
     }
 
+    pub fn drop_processed_pulse(&mut self, pulse: &Pulse) -> Result<(), NebulaError> {
+        match self.pulses_map.drop(pulse) {
+            Some(_) => Ok(()),
+            None => Err(NebulaError::PulseIDHasNotBeenPersisted),
+        }
+    }
+
     pub fn send_value_to_subs(
         &mut self,
-        data_type: &DataType,
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
-    ) -> Result<(&Subscription), NebulaError> {
-        // check is value has been sent
-        // if self.subscriptions_map
-        if let Some(pulse_sent) = self.is_pulse_sent.get(&pulse_id) {
-            if *pulse_sent {
-                return Err(NebulaError::SubscriberValueBeenSent);
-            }
+    ) -> Result<Subscription, ProgramError> {
+        let prev_pulse_id = self.last_pulse_id - 1;
+        msg!("prev_pulse_id: {:} \n", prev_pulse_id);
+        msg!("pulse_id: {:} \n", pulse_id);
+        
+        if *pulse_id != prev_pulse_id {
+            return Err(NebulaError::PulseValidationOrderMismatch.into());
         }
 
-        self.is_pulse_sent.insert(*pulse_id, true);
-
-        let subscription = match self.subscriptions_map.get(&subscription_id) {
-            Some(v) => v,
-            None => return Err(NebulaError::InvalidSubscriptionID),
-        };
-
-        // TODO - cross program invocation
-        // let destination_program_id = subscription.contract_address;
-
-        Ok((subscription))
+        match self.subscriptions_map.get(&subscription_id) {
+            Some(v) => Ok(v.clone()),
+            None => return Err(NebulaError::InvalidSubscriptionID.into()),
+        }
     }
 }

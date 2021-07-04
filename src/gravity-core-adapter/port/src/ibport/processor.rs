@@ -25,7 +25,7 @@ use spl_token::{
 
 use uuid::Uuid;
 
-use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness, extract_from_range, retrieve_oracles};
+use gravity_misc::validation::{validate_contract_emptiness, extract_from_range, retrieve_oracles};
 
 use solana_gravity_contract::gravity::{
     error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
@@ -42,6 +42,7 @@ use crate::ibport::state::IBPortContract;
 use crate::ibport::error::PortError;
 use crate::ibport::bridge::Bridge;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::validation::PDAResolver;
 
 
 fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
@@ -72,15 +73,13 @@ impl IBPortProcessor {
 
         let mut ibport_contract_info = IBPortContract::default();
 
+        ibport_contract_info.is_state_initialized = true;
         ibport_contract_info.token_address = *token_address;
         ibport_contract_info.nebula_address = *nebula_address;
         ibport_contract_info.oracles = oracles.clone();
         ibport_contract_info.initializer_pubkey = *initializer.key;
 
         msg!("instantiated ib port contract");
-
-        msg!("nebula contract len: {:} \n", IBPortContract::LEN);
-        msg!("get packet len: {:} \n", IBPortContract::get_packed_len());
 
         msg!("packing ib port contract");
 
@@ -94,6 +93,7 @@ impl IBPortProcessor {
 
     fn process_create_transfer_unwrap_request(
         accounts: &[AccountInfo],
+        request_id: &[u8; 16],
         ui_amount: f64,
         receiver: &ForeignAddress,
         _program_id: &Pubkey,
@@ -103,8 +103,6 @@ impl IBPortProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
@@ -132,11 +130,6 @@ impl IBPortProcessor {
             amount,
         )?;
 
-        msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
-        msg!(format!("mint: {:} \n", mint.key).as_str());
-        msg!(format!("token_holder: {:} \n", token_holder.key).as_str());
-        msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
-
         invoke_signed(
             &burn_ix,
             &[
@@ -145,11 +138,11 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[&b"ibport"[..]]],
+            &[&[PDAResolver::IBPort.bump_seeds()]],
         )?;
 
         msg!("saving request info");
-        ibport_contract_info.create_transfer_unwrap_request(amount, token_holder.key, receiver)?;
+        ibport_contract_info.create_transfer_unwrap_request(request_id, amount, token_holder.key, receiver)?;
 
         IBPortContract::pack(
             ibport_contract_info,
@@ -187,21 +180,15 @@ impl IBPortProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         // TODO: Caller validation (1)
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        // TODO: Caller validation (2)
-        // if *initializer.key != ibport_contract_info.nebula_address {
-        //     return Err(PortError::AccessDenied.into());
-        // }
         Self::validate_data_provider(
             &ibport_contract_info.oracles,
             initializer.key,
@@ -219,6 +206,8 @@ impl IBPortProcessor {
         
         ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
+        
+
         let mint_ix = mint_to(
             &token_program_id.key,
             &mint.key,
@@ -236,7 +225,7 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[&b"ibport"[..]]],
+            &[&[PDAResolver::IBPort.bump_seeds()]]
         )?;
 
         IBPortContract::pack(
@@ -247,101 +236,9 @@ impl IBPortProcessor {
         Ok(())
     }
 
-    fn process_transfer_token_ownership(
+    fn process_confirm_destination_chain_request(
         accounts: &[AccountInfo],
-        new_owner: &Pubkey,
-        _program_id: &Pubkey,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-
-        let initializer = next_account_info(account_info_iter)?;
-
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
-
-
-        Ok(())
-    }
-
-    fn process_test_cross_burn(
-        accounts: &[AccountInfo],
-        _recipient: &Pubkey,
-        ui_amount: f64,
-        program_id: &Pubkey,
-    ) -> ProgramResult {
-        // let account_info_iter = &mut accounts.iter();
-
-        // let initializer = next_account_info(account_info_iter)?;
-
-        // if !initializer.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
-        // let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        // let mut ibport_contract_info =
-        //     IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
-
-        // let decimals = 8;
-        // let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-        // // Get the accounts to mint
-        // let token_program_id = next_account_info(account_info_iter)?;
-        // let mint = next_account_info(account_info_iter)?;
-        // let token_holder = next_account_info(account_info_iter)?;
-        // let pda_account = next_account_info(account_info_iter)?;
-        // msg!("Creating burn instruction");
-
-        // let burn_ix = burn(
-        //     &token_program_id.key,
-        //     &token_holder.key,
-        //     &mint.key,
-        //     &pda_account.key,
-        //     &[],
-        //     amount,
-        // )?;
-
-        // invoke_signed(
-        //     &burn_ix,
-        //     &[
-        //         token_holder.clone(),
-        //         mint.clone(),
-        //         pda_account.clone(),
-        //         token_program_id.clone(),
-        //     ],
-        //     &[&[&b"ibport"[..]]],
-        // )?;
-
-        Ok(())
-    }
-    
-    /*
-    > spl-token mint 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7 10 DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq 
-        Minting 10 tokens
-        Token: 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7
-        Recipient: DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq
-        Spl TOKEN: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA 
-
-        token: 8bpdGgw47o72bhWt8Tnn33NoybmkeYgwFQ8QF88xLno7 
-
-        recipient: DqNvoZCz6qZqhyLxhQzx7bNtTEng5HAkfD359K2C75Zq 
-
-        config.owner: 2t4FJfcwwtQgVBj2TU89BMJ1pbFXcj9ksZW984q2VgtH 
-
-        amount: 10000000000 
-
-        decimals: 9 
-
-    */
-    fn process_test_cross_mint(
-        accounts: &[AccountInfo],
-        _recipient: &Pubkey,
-        ui_amount: f64,
+        byte_data: &Vec<u8>,
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -354,46 +251,23 @@ impl IBPortProcessor {
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
 
-        msg!(format!("initializer: {:} \n", initializer.key).as_str());
-        msg!(format!("ibport_contract_account: {:} \n", ibport_contract_account.key).as_str());
-        
-        let ibport_contract_info =
+        let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        let decimals = 8;
-        let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-        // Get the accounts to mint
-        let token_program_id = next_account_info(account_info_iter)?;
-        let mint = next_account_info(account_info_iter)?;
-        let recipient_account = next_account_info(account_info_iter)?;
-        let pda_account = next_account_info(account_info_iter)?;
-        msg!("Creating mint instruction");
-
-        let mint_ix = mint_to(
-            &token_program_id.key,
-            &mint.key,
-            &recipient_account.key,
-            &pda_account.key,
-            &[],
-            amount,
+        msg!("validating initializer");
+        Self::validate_data_provider(
+            &ibport_contract_info.oracles,
+            initializer.key,
         )?;
 
-        msg!(format!("token_program_id: {:} \n", token_program_id.key).as_str());
-        msg!(format!("mint: {:} \n", mint.key).as_str());
-        msg!(format!("recipient_account: {:} \n", recipient_account.key).as_str());
-        msg!(format!("pda_account: {:} \n", pda_account.key).as_str());
-
-        invoke_signed(
-            &mint_ix,
-            &[
-                mint.clone(),
-                recipient_account.clone(),
-                pda_account.clone(),
-                token_program_id.clone(),
-            ],
-            &[&[&b"ibport"[..]]],
+        msg!("dropping processed request");
+        ibport_contract_info.drop_processed_request(byte_data)?;
+        
+        IBPortContract::pack(
+            ibport_contract_info,
+            &mut ibport_contract_account.try_borrow_mut_data()?[0..IBPortContract::LEN],
         )?;
+
 
         Ok(())
     }
@@ -422,6 +296,7 @@ impl IBPortProcessor {
                 )
             }
             IBPortContractInstruction::CreateTransferUnwrapRequest {
+                request_id,
                 amount,
                 receiver
             } => {
@@ -429,6 +304,7 @@ impl IBPortProcessor {
 
                 Self::process_create_transfer_unwrap_request(
                     accounts,
+                    &request_id,
                     amount,
                     &receiver,
                     program_id,
@@ -445,39 +321,17 @@ impl IBPortProcessor {
                     program_id,
                 )
             }
-            // IBPortContractInstruction::TransferTokenOwnership {
-            //     new_owner
-            // } => {
-            //     msg!("Instruction: TransferTokenOwnership");
+            IBPortContractInstruction::ConfirmDestinationChainRequest {
+                byte_data
+            } => {
+                msg!("Instruction: ConfirmDestinationChainRequest");
 
-            //     Self::process_transfer_token_ownership(
-            //         accounts,
-            //         &new_owner,
-            //         program_id,
-            //     )
-            // },
-            // IBPortContractInstruction::TestCrossMint {
-            //     receiver,
-            //     amount
-            // } => {
-            //     Self::process_test_cross_mint(
-            //         accounts,
-            //         &receiver,
-            //         amount,
-            //         program_id,
-            //     )
-            // },
-            // IBPortContractInstruction::TestCrossBurn {
-            //     receiver,
-            //     amount
-            // } => {
-            //     Self::process_test_cross_burn(
-            //         accounts,
-            //         &receiver,
-            //         amount,
-            //         program_id,
-            //     )
-            // },
+                Self::process_confirm_destination_chain_request(
+                    accounts,
+                    &byte_data,
+                    program_id,
+                )
+            }
             _ => Err(GravityError::InvalidInstruction.into()),
         }
     }    

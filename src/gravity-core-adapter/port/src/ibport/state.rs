@@ -75,8 +75,9 @@ trait RequestCountConstrained {
 
     fn count_is_below_limit(&self) -> bool {
         let entities = self.count_constrained_entities();
-        for x in entities {
-            if x >= Self::unprocessed_requests_limit() {
+
+        for entity_len in entities {
+            if entity_len >= Self::unprocessed_requests_limit() {
                 return false
             }
         }
@@ -94,34 +95,35 @@ pub struct IBPortContract {
 
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
+
+    pub is_state_initialized: bool,
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 15;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 7;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
-        let res = vec![
+        vec![
             self.swap_status.len()
-        ];
-        res
+        ]
     }
 } 
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..1000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
 }
 
-impl Sealed for IBPortContract {}
+impl Sealed for IBPortContract {} 
 
 impl IsInitialized for IBPortContract {
     fn is_initialized(&self) -> bool {
-        return true;
+        self.is_state_initialized
     }
 }
 
 
 impl Pack for IBPortContract {
-    const LEN: usize = 1000;
+    const LEN: usize = 1500;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -140,6 +142,30 @@ impl Pack for IBPortContract {
     }
 }
 
+pub struct PortOperation<'a> {
+    pub action: u8,
+    pub swap_id: &'a [u8; 16],
+    pub amount: &'a [u8; 8],
+    // receiver: &'a [u8; 32],
+    pub receiver: &'a ForeignAddress,
+}
+
+impl<'a> PortOperation<'a> {
+    pub fn decimals() -> u8 {
+        8
+    }
+
+    pub fn amount_to_f64(&self) -> f64 {
+        let raw_amount = array_ref![self.amount, 0, 8];
+        f64::from_le_bytes(*raw_amount)
+    }
+
+    pub fn amount_to_u64(&self) -> u64 {
+        let decimals = Self::decimals();
+        spl_token::ui_amount_to_amount(self.amount_to_f64(), decimals)
+    }
+}
+
 
 impl IBPortContract {
 
@@ -150,59 +176,102 @@ impl IBPortContract {
         Ok(())
     }
 
+    pub fn unpack_byte_array(byte_data: &Vec<u8>) -> Result<PortOperation, ProgramError> {
+        if byte_data.len() < 57 {
+            return Err(PortError::ByteArrayUnpackFailed.into());
+        }
+
+        let mut pos = 0;
+        let action = byte_data[pos];
+        pos += 1;
+
+        let swap_id = array_ref![byte_data, pos, 16];
+        pos += 16;
+        
+        let raw_amount = array_ref![byte_data, pos, 8];
+        pos += 8;
+
+        let receiver = array_ref![byte_data, pos, 32];
+
+        return Ok(PortOperation {
+            action,
+            swap_id,
+            amount: raw_amount,
+            receiver
+        });
+    }
+
     pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
         let mut pos = 0;
         let action = byte_data[pos];
         pos += 1;
 
-        if "m" == std::str::from_utf8(&[action]).unwrap() {
-            let swap_id = array_ref![byte_data, pos, 16];
+        let port_operation = Self::unpack_byte_array(byte_data)?;
 
-            pos += 16;
-            
-            let swap_status = self.swap_status.get(swap_id);
-
-            if swap_status.is_some() {
-                return Err(PortError::InvalidRequestStatus.into());
-            }
-
-            let raw_amount = array_ref![byte_data, pos, 8];
-            let ui_amount = f64::from_le_bytes(*raw_amount);
-
-            let decimals = 8;
-            let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-            pos += 8;
-
-            let receiver = array_ref![byte_data, pos, 32];
-
-            if input_pubkey.to_bytes() != *receiver {
-                return Err(PortError::ErrorOnReceiverUnpack.into());
-            }
-            
-            *input_amount = amount;
-
-            return Ok(());
+        if "m" != std::str::from_utf8(&[action]).unwrap() {
+            return Err(PortError::InvalidDataOnAttach.into());
         }
 
-        Err(PortError::InvalidDataOnAttach.into())
+        let swap_status = self.swap_status.get(port_operation.swap_id);
+
+        if swap_status.is_some() {
+            return Err(PortError::InvalidRequestStatus.into());
+        }
+
+        if input_pubkey.to_bytes() != *port_operation.receiver {
+            return Err(PortError::ErrorOnReceiverUnpack.into());
+        }
+        
+        *input_amount = port_operation.amount_to_u64();
+
+        Ok(())
     }
 
-    pub fn create_transfer_unwrap_request(&mut self, amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
-        let mut record_id: [u8; 16] = Default::default();
+    pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), ProgramError>  {
+        let port_operation = Self::unpack_byte_array(byte_array)?;
+        let request_id = port_operation.swap_id;
 
-        // record_id.copy_from_slice(&sender_data_account.to_bytes()[0..16]);
-        record_id.copy_from_slice(&receiver[0..16]);
+        let (request_drop_res, swap_status_drop_res) = (
+            self.requests.drop(request_id),
+            self.swap_status.drop(request_id)
+        );
 
-        self.requests.insert(record_id, UnwrapRequest {
+        if request_drop_res.is_none() || swap_status_drop_res.is_none() {
+            return Err(PortError::RequestIDForConfirmationIsInvalid.into());
+        }
+
+        let (request_drop_res, swap_status_drop_res) = (request_drop_res.unwrap(), swap_status_drop_res.unwrap());
+
+        if request_drop_res.destination_address != *port_operation.receiver {
+            return Err(PortError::RequestReceiverMismatch.into());
+        }
+
+        if swap_status_drop_res != RequestStatus::New {
+            return Err(PortError::RequestStatusMismatch.into());
+        }
+        
+        let port_amount = port_operation.amount_to_u64();
+
+        if request_drop_res.amount != port_amount {
+            return Err(PortError::RequestAmountMismatch.into());
+        }
+
+        Ok(())
+    }
+
+    pub fn create_transfer_unwrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
+        self.validate_requests_count()?;
+
+        if self.requests.contains_key(record_id) {
+            return Err(PortError::RequestIDIsAlreadyBeingProcessed.into());
+        }
+
+        self.requests.insert(*record_id, UnwrapRequest {
             destination_address: *receiver,
             origin_address: *sender_data_account,
             amount
         });
-        self.swap_status.insert(record_id, RequestStatus::New);
-
-        msg!("swap len: {:} \n", self.swap_status.len());
-        msg!("requests len: {:} \n", self.requests.len());
+        self.swap_status.insert(*record_id, RequestStatus::New);
 
         Ok(())
     }

@@ -25,6 +25,23 @@ pub enum PortError {
     #[error("Error on receiver unpack (mint)")]
     ErrorOnReceiverUnpack,
 
+    #[error("Request id is already being processed")]
+    RequestIDIsAlreadyBeingProcessed,
+
+    #[error("Destination chain request confirmation failed: no such request ID")]
+    RequestIDForConfirmationIsInvalid,
+
+    #[error("Request amount mismatch")]
+    RequestAmountMismatch,
+
+    #[error("Request receiver mismatch")]
+    RequestReceiverMismatch,
+
+    #[error("Request status mismatch")]
+    RequestStatusMismatch,
+
+    #[error("Byte array unpack failed")]
+    ByteArrayUnpackFailed,
 }
 
 impl From<PortError> for ProgramError {
