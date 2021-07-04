@@ -37,6 +37,9 @@ pub enum NebulaError {
 
     #[error("Unsubscribe is not available")]
     UnsubscribeIsNotAvailable,
+
+    #[error("Pulse validation order mismatch")]
+    PulseValidationOrderMismatch,
 }
 
 impl From<NebulaError> for ProgramError {

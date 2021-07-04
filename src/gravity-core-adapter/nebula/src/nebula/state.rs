@@ -166,6 +166,10 @@ impl NebulaContract {
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
     ) -> Result<&Subscription, NebulaError> {
+        if *pulse_id != self.last_pulse_id {
+            return Err(NebulaError::PulseValidationOrderMismatch);
+        }
+
         match self.subscriptions_map.get(&subscription_id) {
             Some(v) => Ok(v),
             None => return Err(NebulaError::InvalidSubscriptionID),

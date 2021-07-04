@@ -25,7 +25,7 @@ use spl_token::{
 
 use uuid::Uuid;
 
-use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness, extract_from_range, retrieve_oracles};
+use gravity_misc::validation::{validate_contract_emptiness, extract_from_range, retrieve_oracles};
 
 use solana_gravity_contract::gravity::{
     error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
@@ -101,8 +101,6 @@ impl IBPortProcessor {
         let initializer = next_account_info(account_info_iter)?;
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
@@ -185,7 +183,6 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
@@ -251,8 +248,6 @@ impl IBPortProcessor {
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
-
-        validate_contract_non_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
 
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
