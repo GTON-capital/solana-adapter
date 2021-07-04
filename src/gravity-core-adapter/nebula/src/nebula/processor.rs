@@ -51,7 +51,7 @@ impl NebulaProcessor {
 
         let mut nebula_contract_info = NebulaContract::default();
 
-        nebula_contract_info.is_initialized = true;
+        nebula_contract_info.is_state_initialized = true;
         nebula_contract_info.initializer_pubkey = *initializer.key;
         nebula_contract_info.bft = oracles_bft;
 
@@ -256,7 +256,9 @@ impl NebulaProcessor {
                         recipient_account.clone(),
                         pda_account.clone(),
                     ],
-                    &[&[PDAResolver::IBPort.bump_seeds()]]
+                    &[&[
+                        PDAResolver::IBPort.bump_seeds(),
+                    ]]
                 )?;
 
                 nebula_contract_info.drop_processed_pulse(&Pulse {

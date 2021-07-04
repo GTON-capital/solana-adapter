@@ -48,7 +48,7 @@ pub struct NebulaContract {
 
     pulses_map: RecordHandler<Pulse, PulseID>,
 
-    pub is_initialized: bool,
+    pub is_state_initialized: bool,
     pub initializer_pubkey: Pubkey,
 }
 
@@ -60,8 +60,7 @@ impl Sealed for NebulaContract {}
 
 impl IsInitialized for NebulaContract {
     fn is_initialized(&self) -> bool {
-        // self.is_initialized
-        return true;
+        self.is_state_initialized
     }
 }
 

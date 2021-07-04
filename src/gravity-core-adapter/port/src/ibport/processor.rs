@@ -73,6 +73,7 @@ impl IBPortProcessor {
 
         let mut ibport_contract_info = IBPortContract::default();
 
+        ibport_contract_info.is_state_initialized = true;
         ibport_contract_info.token_address = *token_address;
         ibport_contract_info.nebula_address = *nebula_address;
         ibport_contract_info.oracles = oracles.clone();

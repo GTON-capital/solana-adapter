@@ -95,10 +95,12 @@ pub struct IBPortContract {
 
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
+
+    pub is_state_initialized: bool,
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 15;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 7;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         vec![
@@ -108,20 +110,20 @@ impl RequestCountConstrained for IBPortContract {
 } 
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..1000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
 }
 
-impl Sealed for IBPortContract {}
+impl Sealed for IBPortContract {} 
 
 impl IsInitialized for IBPortContract {
     fn is_initialized(&self) -> bool {
-        return true;
+        self.is_state_initialized
     }
 }
 
 
 impl Pack for IBPortContract {
-    const LEN: usize = 1000;
+    const LEN: usize = 1500;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
