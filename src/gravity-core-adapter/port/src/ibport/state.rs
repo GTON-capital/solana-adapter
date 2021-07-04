@@ -176,7 +176,7 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn unpack_byte_array(byte_data: &Vec<u8>) -> Result<PortOperation, PortError> {
+    pub fn unpack_byte_array(byte_data: &Vec<u8>) -> Result<PortOperation, ProgramError> {
         if byte_data.len() < 57 {
             return Err(PortError::ByteArrayUnpackFailed.into());
         }
@@ -227,7 +227,7 @@ impl IBPortContract {
         Ok(())
     }
 
-    pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), PortError>  {
+    pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), ProgramError>  {
         let port_operation = Self::unpack_byte_array(byte_array)?;
         let request_id = port_operation.swap_id;
 
