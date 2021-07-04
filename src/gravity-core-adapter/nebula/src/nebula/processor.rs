@@ -28,6 +28,7 @@ use crate::nebula::state::{NebulaContract, Pulse};
 use crate::nebula::error::NebulaError;
 use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::validation::PDAResolver;
 
 pub struct NebulaProcessor;
 
@@ -210,8 +211,10 @@ impl NebulaProcessor {
             initializer.key,
         )?;
 
-        match nebula_contract_info.send_value_to_subs(data_type, pulse_id, subscription_id) {
+        
+        match nebula_contract_info.send_value_to_subs(pulse_id, subscription_id) {
             Ok(subscription) => {
+
                 let destination_program_id = subscription.contract_address;
 
                 // TOKEN - spl_token::id()
@@ -253,7 +256,7 @@ impl NebulaProcessor {
                         recipient_account.clone(),
                         pda_account.clone(),
                     ],
-                    &[&[br"ibport"]]
+                    &[&[PDAResolver::IBPort.bump_seeds()]]
                 )?;
 
                 nebula_contract_info.drop_processed_pulse(&Pulse {

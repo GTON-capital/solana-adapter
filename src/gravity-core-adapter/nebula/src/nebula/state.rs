@@ -162,17 +162,20 @@ impl NebulaContract {
 
     pub fn send_value_to_subs(
         &mut self,
-        data_type: &DataType,
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
-    ) -> Result<&Subscription, NebulaError> {
-        if *pulse_id != self.last_pulse_id {
-            return Err(NebulaError::PulseValidationOrderMismatch);
+    ) -> Result<Subscription, ProgramError> {
+        let prev_pulse_id = self.last_pulse_id - 1;
+        msg!("prev_pulse_id: {:} \n", prev_pulse_id);
+        msg!("pulse_id: {:} \n", pulse_id);
+        
+        if *pulse_id != prev_pulse_id {
+            return Err(NebulaError::PulseValidationOrderMismatch.into());
         }
 
         match self.subscriptions_map.get(&subscription_id) {
-            Some(v) => Ok(v),
-            None => return Err(NebulaError::InvalidSubscriptionID),
+            Some(v) => Ok(v.clone()),
+            None => return Err(NebulaError::InvalidSubscriptionID.into()),
         }
     }
 }

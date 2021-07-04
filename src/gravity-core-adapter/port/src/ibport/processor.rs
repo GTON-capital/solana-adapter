@@ -42,6 +42,7 @@ use crate::ibport::state::IBPortContract;
 use crate::ibport::error::PortError;
 use crate::ibport::bridge::Bridge;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::validation::PDAResolver;
 
 
 fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
@@ -136,7 +137,7 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[&b"ibport"[..]]],
+            &[&[PDAResolver::IBPort.bump_seeds()]],
         )?;
 
         msg!("saving request info");
@@ -223,7 +224,7 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[&b"ibport"[..]]],
+            &[&[PDAResolver::IBPort.bump_seeds()]]
         )?;
 
         IBPortContract::pack(

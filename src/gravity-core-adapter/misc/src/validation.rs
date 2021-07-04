@@ -102,3 +102,17 @@ pub fn retrieve_oracles(
         result
     })
 }
+
+
+pub enum PDAResolver {
+    IBPort,
+}
+
+impl PDAResolver {
+    pub fn bump_seeds(&self) -> &[u8] {
+        match self {
+            PDAResolver::IBPort => br"ibport"
+        }
+    }
+}
+
