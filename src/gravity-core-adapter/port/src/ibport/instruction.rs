@@ -40,6 +40,10 @@ pub enum IBPortContractInstruction {
     },
     ConfirmDestinationChainRequest {
         byte_data: Vec<u8>,
+    },
+    TransferTokenOwnership {
+        new_authority: Pubkey,
+        new_token: Pubkey,
     }
 }
 
@@ -110,6 +114,17 @@ impl IBPortContractInstruction {
                 let byte_data = rest.to_vec();
 
                 Self::ConfirmDestinationChainRequest { byte_data }
+            }
+            4 => {
+                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+                let ranges = build_range_from_alloc(&allocs);
+
+                let (new_authority, new_token) = (
+                    Pubkey::new(&rest[ranges[0].clone()]),
+                    Pubkey::new(&rest[ranges[1].clone()])
+                );
+
+                Self::TransferTokenOwnership { new_authority, new_token }
             }
             _ => return Err(InvalidInstruction.into()),
         })

@@ -22,14 +22,11 @@ pub fn allocation_by_instruction_index(
         2 => vec![IBPortContractInstruction::ATTACHED_DATA_ALLOC],
         // ConfirmDestinationChainRequest
         3 => vec![IBPortContractInstruction::ATTACHED_DATA_ALLOC],
-        // 4 => vec![
-        //     IBPortContractInstruction::PUBKEY_ALLOC,
-        //     8,
-        // ],
-        // 5 => vec![
-        //     IBPortContractInstruction::PUBKEY_ALLOC,
-        //     8,
-        // ],
+        // TransferTokenOwnership
+        4 => vec![
+            IBPortContractInstruction::PUBKEY_ALLOC,
+            IBPortContractInstruction::PUBKEY_ALLOC,
+        ],
         _ => return Err(PortError::InvalidInstructionIndex.into()),
     })
 }
