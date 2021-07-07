@@ -40,6 +40,9 @@ pub enum NebulaError {
 
     #[error("Pulse validation order mismatch")]
     PulseValidationOrderMismatch,
+
+    #[error("Keccak hash fail")]
+    KeccakHashFail,
 }
 
 impl From<NebulaError> for ProgramError {

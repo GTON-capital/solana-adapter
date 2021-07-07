@@ -1,9 +1,9 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+
 use solana_program::{
     msg,
-    keccak,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -16,6 +16,7 @@ use solana_gravity_contract::gravity::state::PartialStorage;
 use crate::nebula::error::NebulaError;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone, Copy)]
 pub struct Subscription {
@@ -154,13 +155,27 @@ impl NebulaContract {
     }
 
     pub fn drop_processed_pulse(&mut self, raw_data_value: &Vec<u8>) -> Result<(), NebulaError> {
-        let keccak_hashed = keccak::hash(raw_data_value.clone().as_slice());
+        // let keccak_hashed = keccak::hash(raw_data_value.clone().as_slice());
+
+        let mut keccak_hasher = keccakrs::new_keccak1600_256();
+        let keccak_input_str = match std::str::from_utf8(raw_data_value.as_slice()) {
+            Ok(v) => v,
+            _ => return Err(NebulaError::KeccakHashFail)
+        };
+
+        let mut keccak_input = String::from(keccak_input_str);
+
+        keccak_hasher.injest(&mut keccak_input);
+
+        let keccak_hashed = keccak_hasher.hash();
+
+        // let keccak_hashed = signing::keccak256(raw_data_value.clone().as_slice());
 
         msg!("keccak_hashed: {:?} \n", &keccak_hashed);
         msg!("raw_data_value: {:?} \n", raw_data_value);
 
         let pulse = &Pulse {
-            data_hash: keccak_hashed.to_bytes().to_vec(),
+            data_hash: keccak_hashed,
         };
 
         match self.pulses_map.drop(pulse) {
