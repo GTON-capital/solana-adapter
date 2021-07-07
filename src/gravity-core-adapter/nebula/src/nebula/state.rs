@@ -154,7 +154,7 @@ impl NebulaContract {
     }
 
     pub fn drop_processed_pulse(&mut self, raw_data_value: &Vec<u8>) -> Result<(), NebulaError> {
-        let keccak_hashed = keccak::hash(raw_data_value.clone().as_slice());
+        let keccak_hashed = solana_program::hash::hash(raw_data_value.clone().as_slice());
 
         msg!("keccak_hashed: {:?} \n", &keccak_hashed);
         msg!("raw_data_value: {:?} \n", raw_data_value);
