@@ -154,13 +154,13 @@ impl NebulaContract {
     }
 
     pub fn drop_processed_pulse(&mut self, raw_data_value: &Vec<u8>) -> Result<(), NebulaError> {
-        let keccak_hashed = solana_program::hash::hash(raw_data_value.clone().as_slice());
+        let sha256_hashed = solana_program::hash::hash(raw_data_value.clone().as_slice());
 
-        msg!("keccak_hashed: {:?} \n", &keccak_hashed);
+        msg!("sha256_hashed: {:?} \n", &sha256_hashed);
         msg!("raw_data_value: {:?} \n", raw_data_value);
 
         let pulse = &Pulse {
-            data_hash: keccak_hashed.to_bytes().to_vec(),
+            data_hash: sha256_hashed.to_bytes().to_vec(),
         };
 
         match self.pulses_map.drop(pulse) {
