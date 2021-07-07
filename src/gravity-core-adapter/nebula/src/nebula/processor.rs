@@ -169,6 +169,9 @@ impl NebulaProcessor {
         // TODO: find out where to catch timestamp
         // let current_block = 1;
 
+        msg!("data_hash(len): {:} \n", &data_hash.len());
+        msg!("data_hash: {:?} \n", &data_hash);
+
         nebula_contract_info.add_pulse(data_hash, nebula_contract_info.last_pulse_id)?;
 
         NebulaContract::pack(
@@ -261,9 +264,7 @@ impl NebulaProcessor {
                     ]]
                 )?;
 
-                nebula_contract_info.drop_processed_pulse(&Pulse {
-                    data_hash: data_value.clone(),
-                })?;
+                nebula_contract_info.drop_processed_pulse(data_value)?;
 
                 NebulaContract::pack(
                     nebula_contract_info,
