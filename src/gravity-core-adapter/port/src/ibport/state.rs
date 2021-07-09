@@ -129,11 +129,12 @@ pub struct IBPortContract {
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 7;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 100;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         vec![
-            self.swap_status.len()
+            // self.swap_status.len()
+            self.unprocessed_burn_requests()
         ]
     }
 } 
@@ -197,6 +198,10 @@ impl<'a> PortOperation<'a> {
 
 
 impl IBPortContract {
+
+    fn unprocessed_burn_requests(&self) -> usize {
+        self.requests.len()
+    }
 
     fn validate_requests_count(&self) -> Result<(), PortError> {
         if !self.count_is_below_limit() {
@@ -265,22 +270,23 @@ impl IBPortContract {
         let port_operation = Self::unpack_byte_array(byte_array)?;
         let request_id = port_operation.swap_id;
 
-        let (request_drop_res, swap_status_drop_res) = (
-            self.requests.drop(request_id),
-            self.swap_status.drop(request_id)
-        );
+        let request_drop_res = self.requests.drop(request_id);
 
-        if request_drop_res.is_none() || swap_status_drop_res.is_none() {
+        // cannot drop non existing
+        if request_drop_res.is_none() {
             return Err(PortError::RequestIDForConfirmationIsInvalid.into());
         }
 
-        let (request_drop_res, swap_status_drop_res) = (request_drop_res.unwrap(), swap_status_drop_res.unwrap());
+        let request_drop_res = request_drop_res.unwrap();
 
         if request_drop_res.destination_address != *port_operation.receiver {
             return Err(PortError::RequestReceiverMismatch.into());
         }
 
-        if swap_status_drop_res != RequestStatus::New {
+        let swap_status = self.swap_status.get(request_id).unwrap();
+
+        // we can't obviously delete unprocessed requests
+        if *swap_status == RequestStatus::New {
             return Err(PortError::RequestStatusMismatch.into());
         }
         

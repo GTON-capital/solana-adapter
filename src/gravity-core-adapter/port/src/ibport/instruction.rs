@@ -2,7 +2,7 @@ use solana_program::{
     account_info::AccountInfo,
     msg,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
+    program_pack::{IsInitialized, Sealed},
     pubkey::Pubkey,
     instruction::{AccountMeta, Instruction},
 };
