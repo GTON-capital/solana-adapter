@@ -43,6 +43,18 @@ impl Default for RequestStatus {
     }
 }
 
+impl RequestStatus {
+    pub fn from_u8(input: u8) -> Option<RequestStatus> {
+        Some(match input {
+            0 => RequestStatus::None,
+            1 => RequestStatus::New,
+            2 => RequestStatus::Rejected,
+            3 => RequestStatus::Success,
+            _ => return None
+        })
+    }
+}
+
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 pub type ForeignAddress = [u8; 32];
 
@@ -62,7 +74,22 @@ pub struct UnwrapRequest {
     pub amount: u64
 }
 
+trait PortQueue<T> {
+    fn drop_selected(&mut self, inp: T) -> Option<T>;
+}
+
 pub type RequestsQueue<T> = Vec<T>;
+
+impl<T: PartialEq> PortQueue<T> for RequestsQueue<T> {
+    fn drop_selected(&mut self, input: T) -> Option<T> {
+        for (i, x) in self.iter().enumerate() {
+            if *x == input {
+                return Some(self.remove(i));
+            }
+        }
+        None
+    }
+}
 
 trait RequestCountConstrained {
     const MAX_IDLE_REQUESTS_COUNT: usize;
@@ -97,6 +124,8 @@ pub struct IBPortContract {
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
 
     pub is_state_initialized: bool,
+
+    pub requests_queue: RequestsQueue<[u8; 16]>,
 }
 
 impl RequestCountConstrained for IBPortContract {
@@ -110,7 +139,7 @@ impl RequestCountConstrained for IBPortContract {
 } 
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
+    const DATA_RANGE: std::ops::Range<usize> = 0..150000;
 }
 
 impl Sealed for IBPortContract {} 
@@ -123,7 +152,7 @@ impl IsInitialized for IBPortContract {
 
 
 impl Pack for IBPortContract {
-    const LEN: usize = 1500;
+    const LEN: usize = 150000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -203,31 +232,53 @@ impl IBPortContract {
 
     pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
         let mut pos = 0;
-        let action = byte_data[pos];
+        let action = &[byte_data[pos]];
         pos += 1;
 
-        let port_operation = Self::unpack_byte_array(byte_data)?;
+        let command_char = std::str::from_utf8(action).unwrap();
 
-        if "m" != std::str::from_utf8(&[action]).unwrap() {
-            return Err(PortError::InvalidDataOnAttach.into());
-        }
+        match command_char {
+            "m" => {
+                let port_operation = Self::unpack_byte_array(byte_data)?;
+                let swap_status = self.swap_status.get(port_operation.swap_id);
 
-        let swap_status = self.swap_status.get(port_operation.swap_id);
+                if swap_status.is_some() {
+                    return Err(PortError::InvalidRequestStatus.into());
+                }
 
-        if swap_status.is_some() {
-            return Err(PortError::InvalidRequestStatus.into());
-        }
+                if input_pubkey.to_bytes() != *port_operation.receiver {
+                    return Err(PortError::ErrorOnReceiverUnpack.into());
+                }
+                
+                *input_amount = port_operation.amount_to_u64();
 
-        if input_pubkey.to_bytes() != *port_operation.receiver {
-            return Err(PortError::ErrorOnReceiverUnpack.into());
+                self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
+            },
+            "c" => {
+                // uint swapId = deserializeUint(value, pos, 32); pos += 32;
+                // RequestStatus newStatus = deserializeStatus(value, pos); pos += 1;
+                // changeStatus(swapId, newStatus);
+                let mut pos = 0;
+                let swap_id = array_ref![byte_data, pos, 16];
+                pos += 16;
+                
+                let new_status = RequestStatus::from_u8(array_ref![byte_data, pos, 1][0]).unwrap();
+                pos += 1;
+
+                // change status
+                if new_status != RequestStatus::New {
+                    return Err(PortError::InvalidRequestStatus.into());
+                }
+
+                self.swap_status.insert(*swap_id, new_status);
+                self.requests_queue.drop_selected(*swap_id);
+            },
+            _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
-        *input_amount = port_operation.amount_to_u64();
-
-        self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
-
         Ok(())
     }
+
 
     pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), ProgramError>  {
         let port_operation = Self::unpack_byte_array(byte_array)?;
@@ -274,6 +325,7 @@ impl IBPortContract {
             amount
         });
         self.swap_status.insert(*record_id, RequestStatus::New);
+        self.requests_queue.push(*record_id);
 
         Ok(())
     }
