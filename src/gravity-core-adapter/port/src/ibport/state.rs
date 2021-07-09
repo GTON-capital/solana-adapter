@@ -254,22 +254,6 @@ impl IBPortContract {
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
             },
-            "c" => {
-                let mut pos = 0;
-                let swap_id = array_ref![byte_data, pos, 16];
-                pos += 16;
-                
-                let new_status = RequestStatus::from_u8(array_ref![byte_data, pos, 1][0]).unwrap();
-                pos += 1;
-
-                // change status
-                if new_status != RequestStatus::New {
-                    return Err(PortError::InvalidRequestStatus.into());
-                }
-
-                self.swap_status.insert(*swap_id, new_status);
-                self.requests_queue.drop_selected(*swap_id);
-            },
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
