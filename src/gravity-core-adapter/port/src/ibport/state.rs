@@ -224,6 +224,8 @@ impl IBPortContract {
         
         *input_amount = port_operation.amount_to_u64();
 
+        self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
+
         Ok(())
     }
 
