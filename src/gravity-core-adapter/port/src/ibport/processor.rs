@@ -204,27 +204,29 @@ impl IBPortProcessor {
 
         let mut amount: u64 = 0;
         
-        ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
+        let operation = ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
-        let mint_ix = mint_to(
-            &token_program_id.key,
-            &mint.key,
-            &recipient_account.key,
-            &pda_account.key,
-            &[],
-            amount,
-        )?;
+        if operation == String::from("m") {
+            let mint_ix = mint_to(
+                &token_program_id.key,
+                &mint.key,
+                &recipient_account.key,
+                &pda_account.key,
+                &[],
+                amount,
+            )?;
 
-        invoke_signed(
-            &mint_ix,
-            &[
-                mint.clone(),
-                recipient_account.clone(),
-                pda_account.clone(),
-                token_program_id.clone(),
-            ],
-            &[&[PDAResolver::IBPort.bump_seeds()]]
-        )?;
+            invoke_signed(
+                &mint_ix,
+                &[
+                    mint.clone(),
+                    recipient_account.clone(),
+                    pda_account.clone(),
+                    token_program_id.clone(),
+                ],
+                &[&[PDAResolver::IBPort.bump_seeds()]]
+            )?;
+        }
 
         IBPortContract::pack(
             ibport_contract_info,

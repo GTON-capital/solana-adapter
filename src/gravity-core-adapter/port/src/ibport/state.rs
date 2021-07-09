@@ -230,7 +230,7 @@ impl IBPortContract {
         });
     }
 
-    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
+    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<String, ProgramError> {
         let mut pos = 0;
         let action = &[byte_data[pos]];
         pos += 1;
@@ -255,9 +255,6 @@ impl IBPortContract {
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
             },
             "c" => {
-                // uint swapId = deserializeUint(value, pos, 32); pos += 32;
-                // RequestStatus newStatus = deserializeStatus(value, pos); pos += 1;
-                // changeStatus(swapId, newStatus);
                 let mut pos = 0;
                 let swap_id = array_ref![byte_data, pos, 16];
                 pos += 16;
@@ -276,7 +273,7 @@ impl IBPortContract {
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
-        Ok(())
+        Ok(String::from(command_char))
     }
 
 
