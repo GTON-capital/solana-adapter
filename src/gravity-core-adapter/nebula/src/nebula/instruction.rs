@@ -138,7 +138,7 @@ impl NebulaContractInstruction {
                 let ranges = build_range_from_alloc(&allocs);
 
                 let data_hash =
-                    extract_from_range(rest, ranges[0].clone(), |x: &[u8]| *array_ref![x, 0, NebulaContractInstruction::DATA_HASH_ALLOC])?;
+                    extract_from_range(rest, ranges[0].clone(), |x: &[u8]| *array_ref![x, 0, 32])?;
                 let data_hash = data_hash.to_vec();
 
                 Self::SendHashValue { data_hash }

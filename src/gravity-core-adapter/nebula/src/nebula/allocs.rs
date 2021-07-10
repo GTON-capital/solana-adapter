@@ -20,7 +20,7 @@ pub fn allocation_by_instruction_index(
             NebulaContractInstruction::PULSE_ID_ALLOC,
         ],
         // SendHashValue
-        2 => vec![NebulaContractInstruction::DATA_HASH_ALLOC],
+        2 => vec![32],
         // SendValueToSubs
         3 => vec![
             NebulaContractInstruction::DATA_HASH_ALLOC,

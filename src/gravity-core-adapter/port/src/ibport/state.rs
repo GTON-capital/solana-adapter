@@ -43,6 +43,18 @@ impl Default for RequestStatus {
     }
 }
 
+impl RequestStatus {
+    pub fn from_u8(input: u8) -> Option<RequestStatus> {
+        Some(match input {
+            0 => RequestStatus::None,
+            1 => RequestStatus::New,
+            2 => RequestStatus::Rejected,
+            3 => RequestStatus::Success,
+            _ => return None
+        })
+    }
+}
+
 // #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
 pub type ForeignAddress = [u8; 32];
 
@@ -62,7 +74,22 @@ pub struct UnwrapRequest {
     pub amount: u64
 }
 
+trait PortQueue<T> {
+    fn drop_selected(&mut self, inp: T) -> Option<T>;
+}
+
 pub type RequestsQueue<T> = Vec<T>;
+
+impl<T: PartialEq> PortQueue<T> for RequestsQueue<T> {
+    fn drop_selected(&mut self, input: T) -> Option<T> {
+        for (i, x) in self.iter().enumerate() {
+            if *x == input {
+                return Some(self.remove(i));
+            }
+        }
+        None
+    }
+}
 
 trait RequestCountConstrained {
     const MAX_IDLE_REQUESTS_COUNT: usize;
@@ -97,20 +124,23 @@ pub struct IBPortContract {
     pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
 
     pub is_state_initialized: bool,
+
+    pub requests_queue: RequestsQueue<[u8; 16]>,
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 7;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 100;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         vec![
-            self.swap_status.len()
+            // self.swap_status.len()
+            self.unprocessed_burn_requests()
         ]
     }
 } 
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..1500;
+    const DATA_RANGE: std::ops::Range<usize> = 0..150000;
 }
 
 impl Sealed for IBPortContract {} 
@@ -123,7 +153,7 @@ impl IsInitialized for IBPortContract {
 
 
 impl Pack for IBPortContract {
-    const LEN: usize = 1500;
+    const LEN: usize = 150000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -169,6 +199,10 @@ impl<'a> PortOperation<'a> {
 
 impl IBPortContract {
 
+    fn unprocessed_burn_requests(&self) -> usize {
+        self.requests.len()
+    }
+
     fn validate_requests_count(&self) -> Result<(), PortError> {
         if !self.count_is_below_limit() {
             return Err(PortError::TransferRequestsCountLimit);
@@ -201,52 +235,58 @@ impl IBPortContract {
         });
     }
 
-    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<(), ProgramError> {
+    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<String, ProgramError> {
         let mut pos = 0;
-        let action = byte_data[pos];
+        let action = &[byte_data[pos]];
         pos += 1;
 
-        let port_operation = Self::unpack_byte_array(byte_data)?;
+        let command_char = std::str::from_utf8(action).unwrap();
 
-        if "m" != std::str::from_utf8(&[action]).unwrap() {
-            return Err(PortError::InvalidDataOnAttach.into());
-        }
+        match command_char {
+            "m" => {
+                let port_operation = Self::unpack_byte_array(byte_data)?;
+                let swap_status = self.swap_status.get(port_operation.swap_id);
 
-        let swap_status = self.swap_status.get(port_operation.swap_id);
+                if swap_status.is_some() {
+                    return Err(PortError::InvalidRequestStatus.into());
+                }
 
-        if swap_status.is_some() {
-            return Err(PortError::InvalidRequestStatus.into());
-        }
+                if input_pubkey.to_bytes() != *port_operation.receiver {
+                    return Err(PortError::ErrorOnReceiverUnpack.into());
+                }
+                
+                *input_amount = port_operation.amount_to_u64();
 
-        if input_pubkey.to_bytes() != *port_operation.receiver {
-            return Err(PortError::ErrorOnReceiverUnpack.into());
+                self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
+            },
+            _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
-        *input_amount = port_operation.amount_to_u64();
-
-        Ok(())
+        Ok(String::from(command_char))
     }
+
 
     pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), ProgramError>  {
         let port_operation = Self::unpack_byte_array(byte_array)?;
         let request_id = port_operation.swap_id;
 
-        let (request_drop_res, swap_status_drop_res) = (
-            self.requests.drop(request_id),
-            self.swap_status.drop(request_id)
-        );
+        let request_drop_res = self.requests.drop(request_id);
 
-        if request_drop_res.is_none() || swap_status_drop_res.is_none() {
+        // cannot drop non existing
+        if request_drop_res.is_none() {
             return Err(PortError::RequestIDForConfirmationIsInvalid.into());
         }
 
-        let (request_drop_res, swap_status_drop_res) = (request_drop_res.unwrap(), swap_status_drop_res.unwrap());
+        let request_drop_res = request_drop_res.unwrap();
 
         if request_drop_res.destination_address != *port_operation.receiver {
             return Err(PortError::RequestReceiverMismatch.into());
         }
 
-        if swap_status_drop_res != RequestStatus::New {
+        let swap_status = self.swap_status.get(request_id).unwrap();
+
+        // we can't obviously delete unprocessed requests
+        if *swap_status == RequestStatus::New {
             return Err(PortError::RequestStatusMismatch.into());
         }
         
@@ -272,6 +312,7 @@ impl IBPortContract {
             amount
         });
         self.swap_status.insert(*record_id, RequestStatus::New);
+        self.requests_queue.push(*record_id);
 
         Ok(())
     }

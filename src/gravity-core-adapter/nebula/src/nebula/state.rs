@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 
 use solana_program::{
     msg,
+    keccak,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -152,7 +153,16 @@ impl NebulaContract {
         Err(NebulaError::DataProviderForSendValueToSubsIsInvalid)
     }
 
-    pub fn drop_processed_pulse(&mut self, pulse: &Pulse) -> Result<(), NebulaError> {
+    pub fn drop_processed_pulse(&mut self, raw_data_value: &Vec<u8>) -> Result<(), NebulaError> {
+        let sha256_hashed = solana_program::hash::hash(raw_data_value.clone().as_slice());
+
+        msg!("sha256_hashed: {:?} \n", &sha256_hashed);
+        msg!("raw_data_value: {:?} \n", raw_data_value);
+
+        let pulse = &Pulse {
+            data_hash: sha256_hashed.to_bytes().to_vec(),
+        };
+
         match self.pulses_map.drop(pulse) {
             Some(_) => Ok(()),
             None => Err(NebulaError::PulseIDHasNotBeenPersisted),
