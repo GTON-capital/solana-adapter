@@ -39,6 +39,7 @@ use crate::ibport::state::ForeignAddress;
 
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
+use crate::ibport::token::susy_wrapped_gton_mint;
 use crate::ibport::error::PortError;
 use crate::ibport::bridge::Bridge;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
@@ -121,6 +122,10 @@ impl IBPortProcessor {
         let token_holder = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
 
+        if *mint.key != susy_wrapped_gton_mint() {
+            return Err(PortError::InvalidTokenMint.into());
+        }
+
         let burn_ix = burn(
             &token_program_id.key,
             &token_holder.key,
@@ -199,6 +204,10 @@ impl IBPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+
+        if *mint.key != susy_wrapped_gton_mint() {
+            return Err(PortError::InvalidTokenMint.into());
+        }
 
         msg!("Creating mint instruction");
 
