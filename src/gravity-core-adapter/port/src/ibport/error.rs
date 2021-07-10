@@ -42,6 +42,9 @@ pub enum PortError {
 
     #[error("Byte array unpack failed")]
     ByteArrayUnpackFailed,
+
+    #[error("Invalid token mint")]
+    InvalidTokenMint,
 }
 
 impl From<PortError> for ProgramError {
