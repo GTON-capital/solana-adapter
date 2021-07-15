@@ -297,6 +297,9 @@ impl IBPortContract {
             return Err(PortError::RequestAmountMismatch.into());
         }
 
+        let rq_queue_index = self.requests_queue.iter().position(|r| *r == *request_id).unwrap();
+        self.requests_queue.remove(rq_queue_index);
+
         Ok(())
     }
 
