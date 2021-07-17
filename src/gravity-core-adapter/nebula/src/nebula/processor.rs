@@ -1,30 +1,24 @@
 use solana_program::{
-    log::sol_log_compute_units,
     account_info::{next_account_info, AccountInfo},
-    clock::{Clock, Slot},
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
-    program::{invoke, invoke_signed},
+    program::{invoke_signed},
     pubkey::Pubkey,
-    sysvar::Sysvar,
 };
 
 use spl_token::{
-    error::TokenError,
-    instruction::is_valid_signer_index,
     state::Multisig,
 };
 
 use gravity_misc::validation::validate_contract_emptiness;
 use solana_gravity_contract::gravity::{
-    error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
-    state::GravityContract,
+    error::GravityError, processor::MiscProcessor,
 };
 
 use crate::nebula::instruction::NebulaContractInstruction;
-use crate::nebula::state::{NebulaContract, Pulse};
+use crate::nebula::state::{NebulaContract};
 use crate::nebula::error::NebulaError;
 use solana_port_contract::ibport::instruction::attach_value;
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
@@ -91,7 +85,7 @@ impl NebulaProcessor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let initializer = next_account_info(account_info_iter)?;
+        let _initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -135,7 +129,7 @@ impl NebulaProcessor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
-        let initializer = next_account_info(account_info_iter)?;
+        let _initializer = next_account_info(account_info_iter)?;
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -185,12 +179,12 @@ impl NebulaProcessor {
     pub fn process_nebula_send_value_to_subs(
         accounts: &[AccountInfo],
         data_value: &Vec<u8>,
-        data_type: &DataType,
+        _data_type: &DataType,
         pulse_id: &PulseID,
         subscription_id: &SubscriptionID,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
-        let accounts_copy = accounts.clone();
+        let _accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
@@ -202,7 +196,7 @@ impl NebulaProcessor {
         )?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
-        let nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+        let _nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
 

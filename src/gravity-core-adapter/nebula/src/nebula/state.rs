@@ -1,9 +1,8 @@
-use std::fmt;
-use std::marker::PhantomData;
+
+
 
 use solana_program::{
     msg,
-    keccak,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
@@ -109,7 +108,7 @@ impl NebulaContract {
 
     pub fn unsubscribe(
         &mut self,
-        subscription_id: &SubscriptionID,
+        _subscription_id: &SubscriptionID,
     ) -> Result<(), NebulaError> {
         // Ok(())
         Err(NebulaError::UnsubscribeIsNotAvailable)
