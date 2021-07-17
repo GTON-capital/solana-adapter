@@ -1,25 +1,17 @@
+use std::str::FromStr;
+
 use solana_program::{
-    account_info::AccountInfo,
-    msg,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Sealed},
     pubkey::Pubkey,
     instruction::{AccountMeta, Instruction},
 };
-use spl_token::state::Multisig;
-use std::convert::TryInto;
-use std::ops::Range;
-use std::slice::SliceIndex;
 use std::mem::size_of;
+use arrayref::array_ref;
 
-use arrayref::{array_ref, array_refs};
-// use hex;
-
-use gravity_misc::model::{U256};
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
 
 use crate::luport::allocs::allocation_by_instruction_index;
-use crate::luport::state::ForeignAddress;
+use gravity_misc::ports::state::ForeignAddress;
 
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
 
@@ -28,6 +20,7 @@ pub enum LUPortContractInstruction {
     InitContract {
         nebula_address: Pubkey,
         token_address: Pubkey,
+        token_mint: Pubkey,
         oracles: Vec<Pubkey>,
     },
     CreateTransferUnwrapRequest {
@@ -63,28 +56,22 @@ impl LUPortContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
 
-                let (nebula_address, token_address) = (
+                let (nebula_address, token_address, token_mint) = (
                     Pubkey::new(&rest[ranges[0].clone()]),
-                    Pubkey::new(&rest[ranges[1].clone()])
+                    Pubkey::new(&rest[ranges[1].clone()]),
+                    Pubkey::new(&rest[ranges[2].clone()]),
                 );
+                
+                let oracles_bft = extract_from_range(rest, 64..65, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
+                let oracles = retrieve_oracles(rest, 65..65 + (oracles_bft as usize * 32), oracles_bft)?;
 
-                if rest.len() == 64 {
-                    Self::InitContract {
-                        nebula_address,
-                        token_address,
-                        oracles: Vec::new(),
-                    }
-                } else {
-                    let oracles_bft = extract_from_range(rest, 64..65, |x: &[u8]| {
-                        u8::from_le_bytes(*array_ref![x, 0, 1])
-                    })?;
-                    let oracles = retrieve_oracles(rest, 65..65 + (oracles_bft as usize * 32), oracles_bft)?;
-
-                    Self::InitContract {
-                        nebula_address,
-                        token_address,
-                        oracles,
-                    }
+                Self::InitContract {
+                    nebula_address,
+                    token_address,
+                    token_mint,
+                    oracles,
                 }
             }
             // CreateTransferUnwrapRequest
@@ -133,7 +120,7 @@ impl LUPortContractInstruction {
 
 impl LUPortContractInstruction {
     pub fn pack(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(size_of::<Self>());
+        let buf = Vec::with_capacity(size_of::<Self>());
         match self {
             &Self::AttachValue {
                 ref byte_data,

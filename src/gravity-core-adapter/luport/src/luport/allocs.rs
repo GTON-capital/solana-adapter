@@ -1,13 +1,14 @@
-use crate::luport::error::PortError;
+use gravity_misc::ports::error::PortError;
 use crate::luport::instruction::LUPortContractInstruction;
 
 pub fn allocation_by_instruction_index(
     instruction: usize,
-    oracles_bft: Option<usize>,
+    _oracles_bft: Option<usize>,
 ) -> Result<Vec<usize>, PortError> {
     Ok(match instruction {
         // InitContract
         0 => vec![
+            LUPortContractInstruction::PUBKEY_ALLOC,
             LUPortContractInstruction::PUBKEY_ALLOC,
             LUPortContractInstruction::PUBKEY_ALLOC,
             1,

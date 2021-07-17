@@ -21,7 +21,7 @@ use gravity_misc::ports::state::ForeignAddress;
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
 use crate::ibport::token::susy_wrapped_gton_mint;
-use crate::ibport::error::PortError;
+use gravity_misc::ports::error::PortError;
 use gravity_misc::validation::PDAResolver;
 
 
