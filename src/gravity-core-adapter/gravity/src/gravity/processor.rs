@@ -8,28 +8,17 @@ use solana_program::{
 };
 
 use spl_token::{
-    // instruction::initialize_multisig,
-    // state::Account as TokenAccount
     error::TokenError,
     instruction::is_valid_signer_index,
-
-    // processor::Processor::process_initialize_multisig,
-    // processor::Processor as TokenProcessor,
     state::Multisig,
 };
 
 use crate::gravity::{
     error::GravityError, instruction::GravityContractInstruction, state::GravityContract,
-    state::PartialStorage,
 };
 
-use gravity_misc::model::{DataType, PulseID};
+use gravity_misc::model::PulseID;
 use gravity_misc::validation::{validate_contract_emptiness, validate_contract_non_emptiness};
-
-// use nebula::{
-//     instruction::NebulaContractInstruction,
-//     state::{DataType, NebulaContract, PulseID},
-// };
 
 pub struct GravityProcessor;
 
@@ -71,7 +60,7 @@ impl GravityProcessor {
     fn process_init_gravity_contract(
         accounts: &[AccountInfo],
         new_consuls: Vec<Pubkey>,
-        current_round: PulseID,
+        _current_round: PulseID,
         bft: u8,
         _program_id: &Pubkey,
     ) -> ProgramResult {
@@ -99,7 +88,7 @@ impl GravityProcessor {
         let gravity_contract_multisig_account = next_account_info(account_info_iter)?;
 
         msg!("initializing multisig program");
-        let multisig_result = MiscProcessor::process_init_multisig(
+        MiscProcessor::process_init_multisig(
             &gravity_contract_multisig_account,
             &new_consuls,
             bft,
@@ -178,8 +167,6 @@ impl MiscProcessor {
         minumum_bft: u8,
     ) -> ProgramResult {
         let mut multisig = Multisig::unpack_unchecked(&multisig_account.try_borrow_data()?)?;
-        // let multisig_account_len = multisig_account.try_borrow_data()?.len();
-        // let multisig_account_rent = &Rent::from_account_info(multisig_account)?;
 
         if multisig.is_initialized {
             return Err(TokenError::AlreadyInUse.into());

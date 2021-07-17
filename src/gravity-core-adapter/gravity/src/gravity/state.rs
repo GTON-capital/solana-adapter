@@ -8,8 +8,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-
 #[derive(
     BorshDeserialize, BorshSchema, BorshSerialize, PartialEq, PartialOrd, Default, Debug, Clone,
 )]

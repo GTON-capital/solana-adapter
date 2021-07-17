@@ -66,7 +66,7 @@ impl NebulaProcessor {
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
 
         msg!("initializing multisig program");
-        let multisig_result = MiscProcessor::process_init_multisig(
+        MiscProcessor::process_init_multisig(
             &nebula_contract_multisig_account,
             &initial_oracles,
             oracles_bft,

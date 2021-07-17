@@ -6,11 +6,3 @@ use solana_program::{
 use std::convert::TryInto;
 
 pub type WrappedResult<T> = Result<T, Box<dyn error::Error>>;
-
-// pub trait ContractStateValidator {
-//     fn extract_account_data(accounts: Vec<AccountInfo>) -> Result<AccountInfo<'_>, ProgramError>;
-
-//     fn validate_initialized(accounts: &[AccountInfo]) -> ProgramResult;
-//     fn validate_non_initialized(accounts: &[AccountInfo]) -> ProgramResult;
-// }
-
