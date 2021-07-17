@@ -1,54 +1,33 @@
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    clock::{Clock, Slot},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed},
+    program::invoke_signed,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
+    program_pack::Pack,
     pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-use std::{
-    cell::{Ref, RefCell, RefMut},
-    cmp, fmt,
-    rc::Rc,
 };
 
 use spl_token::{
-    error::TokenError,
-    processor::Processor as TokenProcessor,
-    instruction::{burn_checked, burn, mint_to, set_authority, is_valid_signer_index, TokenInstruction, AuthorityType},
-    state::Multisig,
-    state::Account as TokenAccount
+    instruction::{burn, mint_to, set_authority, AuthorityType},
 };
 
-use uuid::Uuid;
+use gravity_misc::validation::validate_contract_emptiness;
 
-use gravity_misc::validation::{validate_contract_emptiness, extract_from_range, retrieve_oracles};
 
-use solana_gravity_contract::gravity::{
-    error::GravityError, instruction::GravityContractInstruction, processor::MiscProcessor,
-    state::GravityContract,
-};
 
-use arrayref::array_ref;
-
-use gravity_misc::model::{U256};
-use crate::ibport::state::ForeignAddress;
+use gravity_misc::ports::state::ForeignAddress;
 
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
 use crate::ibport::token::susy_wrapped_gton_mint;
 use crate::ibport::error::PortError;
-use crate::ibport::bridge::Bridge;
-use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use gravity_misc::validation::PDAResolver;
 
 
-fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[&target_address.to_bytes(), br"mint"], token_program_id)
-}
+// fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
+//     Pubkey::find_program_address(&[&target_address.to_bytes(), br"mint"], token_program_id)
+// }
 
 pub struct IBPortProcessor;
 
@@ -102,6 +81,9 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
 
@@ -248,7 +230,7 @@ impl IBPortProcessor {
     fn process_confirm_destination_chain_request(
         accounts: &[AccountInfo],
         byte_data: &Vec<u8>,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -285,7 +267,7 @@ impl IBPortProcessor {
         accounts: &[AccountInfo],
         new_authority: &Pubkey,
         new_token_address: &Pubkey,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -426,7 +408,7 @@ impl IBPortProcessor {
                     program_id,
                 )
             }
-            _ => Err(GravityError::InvalidInstruction.into()),
+            // _ => Err(GravityError::InvalidInstruction.into()),
         }
     }    
 }

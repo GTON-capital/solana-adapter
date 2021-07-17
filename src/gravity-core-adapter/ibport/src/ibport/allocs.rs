@@ -3,7 +3,7 @@ use crate::ibport::instruction::IBPortContractInstruction;
 
 pub fn allocation_by_instruction_index(
     instruction: usize,
-    oracles_bft: Option<usize>,
+    _oracles_bft: Option<usize>,
 ) -> Result<Vec<usize>, PortError> {
     Ok(match instruction {
         // InitContract

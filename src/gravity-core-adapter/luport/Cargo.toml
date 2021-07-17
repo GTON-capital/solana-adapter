@@ -1,5 +1,5 @@
 [package]
-name = "solana-nebula-contract"
+name = "solana-port-contract"
 version = "0.1.0"
 authors = ["Shamil Khalilov <shamfama@gmail.com>"]
 edition = "2018"
@@ -16,8 +16,8 @@ serde = "1.0.125"
 borsh = "0.8"
 borsh-derive = "0.8.1"
 cfg-if = "1.0.0"
+uuid = { version = "0.8", features = ["v1"] }
 gravity-misc = { version = "0.0.1", path = "../misc" }
-solana-port-contract = { version = "0.1.0", path = "../ibport", features = ["no-entrypoint"] }
 solana-gravity-contract = { version = "0.0.1", path = "../gravity", features = ["no-entrypoint"] }
 
 [features]

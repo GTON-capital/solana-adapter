@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use solana_program::program_error::{ProgramError, PrintProgramError};
+use solana_program::program_error::{ProgramError};
 // use solana_program::decode_error::DecodeError;
 // use num_traits::FromPrimitive;
 

@@ -1,25 +1,15 @@
 use solana_program::{
-    account_info::AccountInfo,
-    msg,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Sealed},
     pubkey::Pubkey,
     instruction::{AccountMeta, Instruction},
 };
-use spl_token::state::Multisig;
-use std::convert::TryInto;
-use std::ops::Range;
-use std::slice::SliceIndex;
 use std::mem::size_of;
+use arrayref::array_ref;
 
-use arrayref::{array_ref, array_refs};
-// use hex;
-
-use gravity_misc::model::{U256};
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
 
 use crate::ibport::allocs::allocation_by_instruction_index;
-use crate::ibport::state::ForeignAddress;
+use gravity_misc::ports::state::ForeignAddress;
 
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
 
@@ -133,7 +123,7 @@ impl IBPortContractInstruction {
 
 impl IBPortContractInstruction {
     pub fn pack(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(size_of::<Self>());
+        let buf = Vec::with_capacity(size_of::<Self>());
         match self {
             &Self::AttachValue {
                 ref byte_data,

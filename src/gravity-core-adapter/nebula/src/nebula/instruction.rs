@@ -1,16 +1,13 @@
 use solana_program::{
-    account_info::AccountInfo,
-    msg,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use spl_token::state::Multisig;
-use std::convert::TryInto;
-use std::ops::Range;
-use std::slice::SliceIndex;
 
-use arrayref::{array_ref, array_refs};
+
+
+
+
+use arrayref::{array_ref};
 
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
@@ -70,7 +67,7 @@ mod tests {
     fn test_bft_extraction() {
         let input: [u8; 1] = u8::to_le_bytes(3);
 
-        let extracted = extract_from_range(&input, 0..1, |x: &[u8]| {
+        let _extracted = extract_from_range(&input, 0..1, |x: &[u8]| {
             u8::from_le_bytes(*array_ref![x, 0, 1])
         });
     }

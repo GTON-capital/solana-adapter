@@ -1,13 +1,10 @@
-use std::fmt;
-use std::time::{Duration, SystemTime};
+
+use std::time::{SystemTime};
 
 use thiserror::Error;
 
 use solana_program::{
     program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
-    msg,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -59,13 +56,13 @@ impl DataType {
 pub const MAX_RECORDS_COUNT: usize = 20;
 
 pub trait AbstractRecordHandler<K, V> {
-    fn insert(&mut self, key: K, val: V) {}
+    fn insert(&mut self, _key: K, _val: V) {}
 
-    fn contains_key(&self, key: &K) -> bool {
+    fn contains_key(&self, _key: &K) -> bool {
         false
     }
 
-    fn get(&self, key: &K) -> Option<&V> {
+    fn get(&self, _key: &K) -> Option<&V> {
         None
     }
 
@@ -120,7 +117,7 @@ impl<K: PartialEq + Default + Clone, V: Default + Clone> AbstractRecordHandler<K
     }
 
     fn contains_key(&self, key: &K) -> bool {
-        for (pos, internal_key) in self.k.iter().enumerate() {
+        for (_pos, internal_key) in self.k.iter().enumerate() {
             if internal_key == key {
                 return true;
             }
