@@ -8,8 +8,11 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
-use gravity_misc::model::{DataType, PulseID, SubscriptionID};
+use gravity_misc::model::{
+    AbstractRecordHandler, RecordHandler, DataType, PulseID, SubscriptionID
+};
+use gravity_misc::validation::validate_pubkey_match;
+
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use crate::nebula::error::NebulaError;
@@ -143,13 +146,17 @@ impl NebulaContract {
         multisig_owner_keys: &Vec<Pubkey>,
         data_provider: &Pubkey,
     ) -> Result<(), NebulaError> {
-        for owner_key in multisig_owner_keys {
-            if owner_key == data_provider {
-                return Ok(());
-            }
-        }
+        // for owner_key in multisig_owner_keys {
+        //     if owner_key == data_provider {
+        //         return Ok(());
+        //     }
+        // }
 
-        Err(NebulaError::DataProviderForSendValueToSubsIsInvalid)
+        validate_pubkey_match(
+            multisig_owner_keys,
+            data_provider,
+            NebulaError::DataProviderForSendValueToSubsIsInvalid
+        )
     }
 
     pub fn drop_processed_pulse(&mut self, raw_data_value: &Vec<u8>) -> Result<(), NebulaError> {

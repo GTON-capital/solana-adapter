@@ -100,3 +100,17 @@ impl<'a, R> GenericPortOperation<'a, R> {
         spl_token::ui_amount_to_amount(self.amount_to_f64(), decimals)
     }
 }
+
+
+pub struct PortOperationIdentifier;
+
+impl<'a> PortOperationIdentifier {
+    pub const MINT: &'a str = "m";
+    pub const UNLOCK: &'a str = "u";
+}
+
+// unsafe variant
+// impl PortOperationIdentifier {
+//     pub const MINT: *const str = "m";
+//     pub const UNLOCK: *const str = "u";
+// }

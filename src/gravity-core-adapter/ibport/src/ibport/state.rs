@@ -8,20 +8,22 @@ use solana_program::{
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
+use gravity_misc::validation::TokenMintConstrained;
+use gravity_misc::ports::error::PortError;
 use gravity_misc::ports::state::{
     GenericRequest,
     GenericPortOperation,
     RequestsQueue, 
     RequestCountConstrained,
     RequestStatus,
-    ForeignAddress
+    ForeignAddress,
+    PortOperationIdentifier
 };
 
 use arrayref::array_ref;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::ibport::error::PortError;
-
+use crate::ibport::token::susy_wrapped_gton_mint;
 
 pub type UnwrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 
@@ -40,6 +42,16 @@ pub struct IBPortContract {
     pub is_state_initialized: bool,
 
     pub requests_queue: RequestsQueue<[u8; 16]>,
+}
+
+impl TokenMintConstrained<PortError> for IBPortContract {
+
+    fn bound_token_mint(&self) -> (Pubkey, PortError) {
+        return (
+            susy_wrapped_gton_mint(),
+            PortError::InvalidTokenMint
+        )
+    }
 }
 
 impl RequestCountConstrained for IBPortContract {
@@ -132,7 +144,7 @@ impl IBPortContract {
         let command_char = std::str::from_utf8(action).unwrap();
 
         match command_char {
-            "m" => {
+            PortOperationIdentifier::MINT => {
                 let port_operation = Self::unpack_byte_array(byte_data)?;
                 let swap_status = self.swap_status.get(port_operation.swap_id);
 

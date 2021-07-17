@@ -1,128 +1,44 @@
-use std::fmt;
-use std::marker::PhantomData;
-
-use std::time::{Duration, SystemTime};
-use std::ops::Fn;
-
 use solana_program::{
     msg,
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use spl_token::instruction::mint_to_checked;
 
 use solana_gravity_contract::gravity::state::PartialStorage;
+
 use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
+use gravity_misc::validation::TokenMintConstrained;
+use gravity_misc::ports::state::{
+    GenericRequest,
+    GenericPortOperation,
+    RequestsQueue, 
+    RequestCountConstrained,
+    RequestStatus,
+    ForeignAddress,
+    PortOperationIdentifier
+};
 
 use arrayref::array_ref;
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-use uuid::v1::{Context, Timestamp};
-use uuid::Uuid;
-
-use crate::luport::error::PortError;
-
-use gravity_misc::model::{U256, new_uuid};
+use gravity_misc::ports::error::PortError;
 
 
-#[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone, Copy)]
-pub enum RequestStatus {
-    None,
-    New,
-    Rejected,
-    Success,
-     
-}
+pub type WrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 
-impl Default for RequestStatus {
-    fn default() -> Self {
-        RequestStatus::None
-    }
-}
-
-impl RequestStatus {
-    pub fn from_u8(input: u8) -> Option<RequestStatus> {
-        Some(match input {
-            0 => RequestStatus::None,
-            1 => RequestStatus::New,
-            2 => RequestStatus::Rejected,
-            3 => RequestStatus::Success,
-            _ => return None
-        })
-    }
-}
-
-// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-pub type ForeignAddress = [u8; 32];
-
-// by default:
-// 16 bytes - swap id
-// 32 bytes - amount
-// 32 bytes - receiver
-
-// #[derive(BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Debug, Clone)]
-// pub type AttachedData = [u8; 80];
-
-#[repr(C)]
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone, Default, Copy)]
-pub struct UnwrapRequest {
-    pub destination_address: ForeignAddress,
-    pub origin_address: Pubkey,
-    pub amount: u64
-}
-
-trait PortQueue<T> {
-    fn drop_selected(&mut self, inp: T) -> Option<T>;
-}
-
-pub type RequestsQueue<T> = Vec<T>;
-
-impl<T: PartialEq> PortQueue<T> for RequestsQueue<T> {
-    fn drop_selected(&mut self, input: T) -> Option<T> {
-        for (i, x) in self.iter().enumerate() {
-            if *x == input {
-                return Some(self.remove(i));
-            }
-        }
-        None
-    }
-}
-
-// trait RequestCountConstrained {
-//     const MAX_IDLE_REQUESTS_COUNT: usize;
-
-//     fn unprocessed_requests_limit() -> usize {
-//         Self::MAX_IDLE_REQUESTS_COUNT
-//     }                                                                                                                                                                                                             
-
-//     fn count_constrained_entities(&self) -> Vec<usize>;
-
-//     fn count_is_below_limit(&self) -> bool {
-//         let entities = self.count_constrained_entities();
-
-//         for entity_len in entities {
-//             if entity_len >= Self::unprocessed_requests_limit() {
-//                 return false
-//             }
-//         }
-//         return true
-//     }
-// }
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct LUPortContract {
     pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
-    pub token_address: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
+    pub token_address: Pubkey,
+    pub token_mint: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
     pub initializer_pubkey: Pubkey,
     pub oracles: Vec<Pubkey>,
 
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
-    pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
+    pub requests: RecordHandler<[u8; 16], WrapRequest>,
 
     pub is_state_initialized: bool,
 
@@ -137,7 +53,17 @@ impl RequestCountConstrained for LUPortContract {
             self.unprocessed_burn_requests()
         ]
     }
-} 
+}
+
+impl TokenMintConstrained<PortError> for LUPortContract {
+
+    fn bound_token_mint(&self) -> (Pubkey, PortError) {
+        return (
+            self.token_mint,
+            PortError::InvalidTokenMint
+        )
+    }
+}
 
 impl PartialStorage for LUPortContract {
     const DATA_RANGE: std::ops::Range<usize> = 0..150000;
@@ -172,30 +98,8 @@ impl Pack for LUPortContract {
     }
 }
 
-// pub struct PortOperation<'a> {
-//     pub action: u8,
-//     pub swap_id: &'a [u8; 16],
-//     pub amount: &'a [u8; 8],
-//     // receiver: &'a [u8; 32],
-//     pub receiver: &'a ForeignAddress,
-// }
 
-// impl<'a> PortOperation<'a> {
-//     pub fn decimals() -> u8 {
-//         8
-//     }
-
-//     pub fn amount_to_f64(&self) -> f64 {
-//         let raw_amount = array_ref![self.amount, 0, 8];
-//         f64::from_le_bytes(*raw_amount)
-//     }
-
-//     pub fn amount_to_u64(&self) -> u64 {
-//         let decimals = Self::decimals();
-//         spl_token::ui_amount_to_amount(self.amount_to_f64(), decimals)
-//     }
-// }
-
+pub type PortOperation<'a> = GenericPortOperation<'a, ForeignAddress>;
 
 impl LUPortContract {
 
@@ -236,14 +140,12 @@ impl LUPortContract {
     }
 
     pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<String, ProgramError> {
-        let mut pos = 0;
-        let action = &[byte_data[pos]];
-        pos += 1;
+        let action = &[byte_data[0]];
 
         let command_char = std::str::from_utf8(action).unwrap();
 
         match command_char {
-            "m" => {
+            PortOperationIdentifier::UNLOCK => {
                 let port_operation = Self::unpack_byte_array(byte_data)?;
                 let swap_status = self.swap_status.get(port_operation.swap_id);
 
@@ -302,14 +204,14 @@ impl LUPortContract {
         Ok(())
     }
 
-    pub fn create_transfer_unwrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
+    pub fn create_transfer_wrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {
         self.validate_requests_count()?;
 
         if self.requests.contains_key(record_id) {
             return Err(PortError::RequestIDIsAlreadyBeingProcessed.into());
         }
 
-        self.requests.insert(*record_id, UnwrapRequest {
+        self.requests.insert(*record_id, WrapRequest {
             destination_address: *receiver,
             origin_address: *sender_data_account,
             amount
@@ -319,6 +221,4 @@ impl LUPortContract {
 
         Ok(())
     }
-
-
 }
