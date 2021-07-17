@@ -1,15 +1,12 @@
-use std::convert::TryInto;
-use std::slice::SliceIndex;
+
+
 
 use arrayref::array_ref;
 use solana_program::{
-    account_info::AccountInfo,
-    msg,
     program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use spl_token::state::Multisig;
+
 
 use gravity_misc::validation::{
     build_range_from_alloc, extract_from_range, retrieve_oracles as retrieve_consuls,
@@ -17,7 +14,7 @@ use gravity_misc::validation::{
 
 use crate::gravity::allocs::allocation_by_instruction_index;
 use crate::gravity::error::GravityError::InvalidInstruction;
-use crate::gravity::state::GravityContract;
+
 
 pub enum GravityContractInstruction {
     InitContract {

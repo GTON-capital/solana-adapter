@@ -14,9 +14,7 @@ use spl_token::{
 
 use gravity_misc::validation::validate_contract_emptiness;
 
-use solana_gravity_contract::gravity::{
-    error::GravityError
-};
+
 
 use gravity_misc::ports::state::ForeignAddress;
 
