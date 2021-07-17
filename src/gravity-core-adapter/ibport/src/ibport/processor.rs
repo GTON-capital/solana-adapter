@@ -20,9 +20,10 @@ use gravity_misc::ports::state::ForeignAddress;
 
 use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
-use crate::ibport::token::susy_wrapped_gton_mint;
+
 use gravity_misc::ports::error::PortError;
-use gravity_misc::validation::PDAResolver;
+use gravity_misc::ports::state::PortOperationIdentifier;
+use gravity_misc::validation::{PDAResolver, validate_pubkey_match, TokenMintConstrained};
 
 
 // fn get_mint_address_with_seed(target_address: &Pubkey, token_program_id: &Pubkey) -> (Pubkey, u8) {
@@ -104,9 +105,10 @@ impl IBPortProcessor {
         let token_holder = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
 
-        if *mint.key != susy_wrapped_gton_mint() {
-            return Err(PortError::InvalidTokenMint.into());
-        }
+        ibport_contract_info.validate_token_mint(mint.key)?;
+        // if *mint.key != susy_wrapped_gton_mint() {
+        //     return Err(PortError::InvalidTokenMint.into());
+        // }
 
         let burn_ix = burn(
             &token_program_id.key,
@@ -143,17 +145,15 @@ impl IBPortProcessor {
         multisig_owner_keys: &Vec<Pubkey>,
         data_provider: &Pubkey,
     ) -> Result<(), PortError> {
-        if multisig_owner_keys.len() == 0 {
-            return Ok(());
-        }
+        // if multisig_owner_keys.len() == 0 {
+        //     return Ok(());
+        // }
 
-        for owner_key in multisig_owner_keys {
-            if *owner_key == *data_provider {
-                return Ok(());
-            }
-        }
-
-        Err(PortError::AccessDenied)
+        validate_pubkey_match(
+            multisig_owner_keys,
+            data_provider,
+            PortError::AccessDenied
+        )
     }
 
     fn process_attach_value<'a, 't: 'a>(
@@ -187,9 +187,10 @@ impl IBPortProcessor {
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
 
-        if *mint.key != susy_wrapped_gton_mint() {
-            return Err(PortError::InvalidTokenMint.into());
-        }
+        ibport_contract_info.validate_token_mint(mint.key)?;
+        // if *mint.key != susy_wrapped_gton_mint() {
+        //     return Err(PortError::InvalidTokenMint.into());
+        // }
 
         msg!("Creating mint instruction");
 
@@ -197,7 +198,7 @@ impl IBPortProcessor {
         
         let operation = ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
-        if operation == String::from("m") {
+        if operation == PortOperationIdentifier::MINT.to_string() {
             let mint_ix = mint_to(
                 &token_program_id.key,
                 &mint.key,

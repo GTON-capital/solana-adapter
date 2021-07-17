@@ -9,20 +9,15 @@ use solana_program::{
 };
 
 use spl_token::{
-    instruction::{transfer, mint_to, set_authority, AuthorityType},
+    instruction::{transfer, set_authority, AuthorityType},
 };
 
-use gravity_misc::validation::validate_contract_emptiness;
-
-
-
-use gravity_misc::ports::state::ForeignAddress;
 
 use crate::luport::instruction::LUPortContractInstruction;
 use crate::luport::state::LUPortContract;
-use crate::luport::token::susy_wrapped_gton_mint;
 use gravity_misc::ports::error::PortError;
-use gravity_misc::validation::PDAResolver;
+use gravity_misc::ports::state::{PortOperationIdentifier, ForeignAddress};
+use gravity_misc::validation::{PDAResolver, TokenMintConstrained, validate_pubkey_match, validate_contract_emptiness};
 
 
 pub struct LUPortProcessor;
@@ -46,7 +41,7 @@ impl LUPortProcessor {
 
         let luport_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[..])?;
+        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[0..5000])?;
 
         let mut luport_contract_info = LUPortContract::default();
 
@@ -103,18 +98,8 @@ impl LUPortProcessor {
         let token_receiver = next_account_info(account_info_iter)?;
         let token_holder_account_owner_pda = next_account_info(account_info_iter)?;
 
-        if *mint.key != susy_wrapped_gton_mint() {
-            return Err(PortError::InvalidTokenMint.into());
-        }
+        luport_contract_info.validate_token_mint(mint.key)?;
 
-        // let burn_ix = burn(
-        //     &token_program_id.key,
-        //     &token_holder.key,
-        //     &mint.key,
-        //     &pda_account.key,
-        //     &[],
-        //     amount,
-        // )?;
         // lock tockens
         let transfer_ix = transfer(
             &token_program_id.key,
@@ -151,17 +136,12 @@ impl LUPortProcessor {
         multisig_owner_keys: &Vec<Pubkey>,
         data_provider: &Pubkey,
     ) -> Result<(), PortError> {
-        if multisig_owner_keys.len() == 0 {
-            return Ok(());
-        }
 
-        for owner_key in multisig_owner_keys {
-            if *owner_key == *data_provider {
-                return Ok(());
-            }
-        }
-
-        Err(PortError::AccessDenied)
+        validate_pubkey_match(
+            multisig_owner_keys,
+            data_provider,
+            PortError::AccessDenied
+        )
     }
 
     fn process_attach_value<'a, 't: 'a>(
@@ -189,24 +169,22 @@ impl LUPortProcessor {
             initializer.key,
         )?;
 
-        // Get the accounts to mint
+        // Get the accounts to unlock
         let token_program_id = next_account_info(account_info_iter)?;
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
 
-        if *mint.key != susy_wrapped_gton_mint() {
-            return Err(PortError::InvalidTokenMint.into());
-        }
+        luport_contract_info.validate_token_mint(mint.key)?;
 
-        msg!("Creating mint instruction");
+        msg!("Creating unlock IX");
 
         let mut amount: u64 = 0;
         
         let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
-        if operation == String::from("m") {
-            let mint_ix = mint_to(
+        if operation == PortOperationIdentifier::UNLOCK {
+            let mint_ix = transfer(
                 &token_program_id.key,
                 &mint.key,
                 &recipient_account.key,

@@ -115,3 +115,30 @@ impl PDAResolver {
     }
 }
 
+pub fn validate_pubkey_match<E: std::error::Error>(
+    multisig_owner_keys: &Vec<Pubkey>,
+    data_provider: &Pubkey,
+    error: E,
+) -> Result<(), E> {
+    for owner_key in multisig_owner_keys {
+        if owner_key == data_provider {
+            return Ok(());
+        }
+    }
+
+    Err(error)
+}
+
+
+pub trait TokenMintConstrained<E> {
+    fn bound_token_mint(&self) -> (Pubkey, E);
+
+    fn validate_token_mint(&self, input_token_mint: &Pubkey) -> Result<(), E> {
+        let (expected_token_mint, error) = self.bound_token_mint();
+        if expected_token_mint != *input_token_mint {
+            return Err(error);
+        }
+
+        Ok(())
+    }
+}

@@ -8,13 +8,15 @@ use solana_program::{
 use solana_gravity_contract::gravity::state::PartialStorage;
 
 use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
+use gravity_misc::validation::TokenMintConstrained;
 use gravity_misc::ports::state::{
     GenericRequest,
     GenericPortOperation,
     RequestsQueue, 
     RequestCountConstrained,
     RequestStatus,
-    ForeignAddress
+    ForeignAddress,
+    PortOperationIdentifier
 };
 
 use arrayref::array_ref;
@@ -23,7 +25,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use gravity_misc::ports::error::PortError;
 
 
-pub type UnwrapRequest = GenericRequest<Pubkey, ForeignAddress>;
+pub type WrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 
 
 #[repr(C)]
@@ -36,7 +38,7 @@ pub struct LUPortContract {
     pub oracles: Vec<Pubkey>,
 
     pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
-    pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
+    pub requests: RecordHandler<[u8; 16], WrapRequest>,
 
     pub is_state_initialized: bool,
 
@@ -51,7 +53,17 @@ impl RequestCountConstrained for LUPortContract {
             self.unprocessed_burn_requests()
         ]
     }
-} 
+}
+
+impl TokenMintConstrained<PortError> for LUPortContract {
+
+    fn bound_token_mint(&self) -> (Pubkey, PortError) {
+        return (
+            self.token_mint,
+            PortError::InvalidTokenMint
+        )
+    }
+}
 
 impl PartialStorage for LUPortContract {
     const DATA_RANGE: std::ops::Range<usize> = 0..150000;
@@ -133,7 +145,7 @@ impl LUPortContract {
         let command_char = std::str::from_utf8(action).unwrap();
 
         match command_char {
-            "m" => {
+            PortOperationIdentifier::UNLOCK => {
                 let port_operation = Self::unpack_byte_array(byte_data)?;
                 let swap_status = self.swap_status.get(port_operation.swap_id);
 
@@ -199,7 +211,7 @@ impl LUPortContract {
             return Err(PortError::RequestIDIsAlreadyBeingProcessed.into());
         }
 
-        self.requests.insert(*record_id, UnwrapRequest {
+        self.requests.insert(*record_id, WrapRequest {
             destination_address: *receiver,
             origin_address: *sender_data_account,
             amount
