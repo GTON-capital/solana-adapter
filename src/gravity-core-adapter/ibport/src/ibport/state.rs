@@ -27,7 +27,7 @@ use crate::ibport::token::susy_wrapped_gton_mint;
 
 pub type UnwrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 
-
+/* Warning: backward compatibility is constrainted to production IB port data account */
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
