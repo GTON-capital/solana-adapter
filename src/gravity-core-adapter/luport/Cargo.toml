@@ -1,5 +1,5 @@
 [package]
-name = "solana-port-contract"
+name = "solana-luport-contract"
 version = "0.1.0"
 authors = ["Shamil Khalilov <shamfama@gmail.com>"]
 edition = "2018"
