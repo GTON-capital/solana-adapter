@@ -55,7 +55,7 @@ impl TokenMintConstrained<PortError> for IBPortContract {
 }
 
 impl RequestCountConstrained for IBPortContract {
-    const MAX_IDLE_REQUESTS_COUNT: usize = 100;
+    const MAX_IDLE_REQUESTS_COUNT: usize = 1000;
 
     fn count_constrained_entities(&self) -> Vec<usize> {
         vec![

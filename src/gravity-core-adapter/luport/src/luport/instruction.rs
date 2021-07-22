@@ -1,7 +1,6 @@
 use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
-    instruction::{AccountMeta, Instruction},
 };
 use std::mem::size_of;
 use arrayref::array_ref;
@@ -32,10 +31,10 @@ pub enum LUPortContractInstruction {
     ConfirmDestinationChainRequest {
         byte_data: Vec<u8>,
     },
-    TransferTokenOwnership {
-        new_authority: Pubkey,
-        new_token: Pubkey,
-    }
+    // TransferTokenOwnership {
+    //     new_authority: Pubkey,
+    //     new_token: Pubkey,
+    // }
 }
 
 
@@ -60,10 +59,13 @@ impl LUPortContractInstruction {
                     Pubkey::new(&rest[ranges[2].clone()]),
                 );
                 
-                let oracles_bft = extract_from_range(rest, 64..65, |x: &[u8]| {
+                let mut offset = 32 * 3;
+                let oracles_bft_range = offset..offset + 1;
+                let oracles_bft = extract_from_range(rest, oracles_bft_range, |x: &[u8]| {
                     u8::from_le_bytes(*array_ref![x, 0, 1])
                 })?;
-                let oracles = retrieve_oracles(rest, 65..65 + (oracles_bft as usize * 32), oracles_bft)?;
+                offset += 1;
+                let oracles = retrieve_oracles(rest, offset..offset + (oracles_bft as usize * 32), oracles_bft)?;
 
                 Self::InitContract {
                     nebula_address,
@@ -100,17 +102,17 @@ impl LUPortContractInstruction {
 
                 Self::ConfirmDestinationChainRequest { byte_data }
             }
-            4 => {
-                let allocs = allocation_by_instruction_index((*tag).into(), None)?;
-                let ranges = build_range_from_alloc(&allocs);
+            // 4 => {
+            //     let allocs = allocation_by_instruction_index((*tag).into(), None)?;
+            //     let ranges = build_range_from_alloc(&allocs);
 
-                let (new_authority, new_token) = (
-                    Pubkey::new(&rest[ranges[0].clone()]),
-                    Pubkey::new(&rest[ranges[1].clone()])
-                );
+            //     let (new_authority, new_token) = (
+            //         Pubkey::new(&rest[ranges[0].clone()]),
+            //         Pubkey::new(&rest[ranges[1].clone()])
+            //     );
 
-                Self::TransferTokenOwnership { new_authority, new_token }
-            }
+            //     Self::TransferTokenOwnership { new_authority, new_token }
+            // }
             _ => return Err(InvalidInstruction.into()),
         })
     }
@@ -130,36 +132,4 @@ impl LUPortContractInstruction {
             _ => buf
         }
     }
-}
-
-pub fn attach_value(
-    byte_data: &Vec<u8>,
-    oracle: &Pubkey,
-    subscriber_data_account: &Pubkey,
-    target_program_id: &Pubkey, 
-    token_program_id: &Pubkey, // actually spl_token::id()
-    mint: &Pubkey, // actually the result of spl-token create-token (cli)
-    recipient_account: &Pubkey,
-    luport_pda_account: &Pubkey,
-    signer_pubkeys: &[&Pubkey],
-) -> Result<Instruction, ProgramError> {
-    let data = LUPortContractInstruction::AttachValue { byte_data: byte_data.clone()  }.pack();
-
-    let mut accounts = Vec::with_capacity(6 + signer_pubkeys.len());
-    accounts.push(AccountMeta::new_readonly(*oracle, true));
-    accounts.push(AccountMeta::new(*subscriber_data_account, false));
-    accounts.push(AccountMeta::new_readonly(*token_program_id, false));
-    accounts.push(AccountMeta::new(*mint, false));
-    accounts.push(AccountMeta::new(*recipient_account, false));
-    accounts.push(AccountMeta::new_readonly(*luport_pda_account, false));
-
-    for signer_pubkey in signer_pubkeys.iter() {
-        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
-    }
-
-    Ok(Instruction {
-        program_id: *target_program_id,
-        accounts,
-        data,
-    })
 }

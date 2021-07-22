@@ -107,8 +107,6 @@ impl NebulaContract {
         Ok(())
     }
 
-    const SERIALIZE_CONTEXT: u16 = 50;
-
     pub fn unsubscribe(
         &mut self,
         _subscription_id: &SubscriptionID,

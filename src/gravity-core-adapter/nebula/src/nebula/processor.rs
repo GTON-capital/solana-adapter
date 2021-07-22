@@ -20,7 +20,10 @@ use solana_gravity_contract::gravity::{
 use crate::nebula::instruction::NebulaContractInstruction;
 use crate::nebula::state::{NebulaContract};
 use crate::nebula::error::NebulaError;
-use solana_port_contract::ibport::instruction::attach_value;
+
+// use solana_port_contract::ibport::instruction::attach_value;
+use gravity_misc::ports::instruction::attach_value;
+
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use gravity_misc::validation::PDAResolver;
 
@@ -208,7 +211,6 @@ impl NebulaProcessor {
             initializer.key,
         )?;
 
-        
         match nebula_contract_info.send_value_to_subs(pulse_id, subscription_id) {
             Ok(subscription) => {
 
