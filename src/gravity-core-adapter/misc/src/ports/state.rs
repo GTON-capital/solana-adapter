@@ -107,6 +107,7 @@ pub struct PortOperationIdentifier;
 impl<'a> PortOperationIdentifier {
     pub const MINT: &'a str = "m";
     pub const UNLOCK: &'a str = "u";
+    pub const CONFIRM: &'a str = "c";
 }
 
 // unsafe variant

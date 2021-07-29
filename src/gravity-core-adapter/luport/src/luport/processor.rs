@@ -145,7 +145,7 @@ impl LUPortProcessor {
     fn process_attach_value<'a, 't: 'a>(
         accounts: &[AccountInfo<'t>],
         byte_data: &Vec<u8>,
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -172,6 +172,7 @@ impl LUPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+        let token_holder = next_account_info(account_info_iter)?;
 
         luport_contract_info.validate_token_mint(mint.key)?;
 
@@ -182,9 +183,9 @@ impl LUPortProcessor {
         let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         if operation == PortOperationIdentifier::UNLOCK {
-            let mint_ix = transfer(
+            let transfer_ix = transfer(
                 &token_program_id.key,
-                &mint.key,
+                &token_holder.key,
                 &recipient_account.key,
                 &pda_account.key,
                 &[],
@@ -192,9 +193,9 @@ impl LUPortProcessor {
             )?;
 
             invoke_signed(
-                &mint_ix,
+                &transfer_ix,
                 &[
-                    mint.clone(),
+                    token_holder.clone(),
                     recipient_account.clone(),
                     pda_account.clone(),
                     token_program_id.clone(),

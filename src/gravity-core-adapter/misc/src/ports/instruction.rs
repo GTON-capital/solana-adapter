@@ -58,10 +58,11 @@ pub fn attach_value(
     recipient_account: &Pubkey,
     ibport_pda_account: &Pubkey,
     signer_pubkeys: &[&Pubkey],
+    additional_data: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let data = SubscriberInstruction::AttachValue { byte_data: byte_data.clone()  }.pack();
 
-    let mut accounts = Vec::with_capacity(6 + signer_pubkeys.len());
+    let mut accounts = Vec::with_capacity(6 + signer_pubkeys.len() + additional_data.len());
     accounts.push(AccountMeta::new_readonly(*oracle, true));
     accounts.push(AccountMeta::new(*subscriber_data_account, false));
     accounts.push(AccountMeta::new_readonly(*token_program_id, false));
@@ -71,6 +72,10 @@ pub fn attach_value(
 
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
+    }
+
+    for additional_data_account in additional_data.iter() {
+        accounts.push(AccountMeta::new(**additional_data_account, false));
     }
 
     Ok(Instruction {

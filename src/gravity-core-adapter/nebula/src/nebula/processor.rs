@@ -197,7 +197,7 @@ impl NebulaProcessor {
         subscription_id: &SubscriptionID,
         _program_id: &Pubkey,
     ) -> ProgramResult {
-        let _accounts_copy = accounts.clone();
+        // let _accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
@@ -212,7 +212,7 @@ impl NebulaProcessor {
         )?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
-        let _nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+        // let _nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
 
@@ -242,6 +242,13 @@ impl NebulaProcessor {
                 let recipient_account = next_account_info(account_info_iter)?;
                 let pda_account = next_account_info(account_info_iter)?;
 
+                let additional_data_accounts = &accounts[9..].to_vec();
+                let mut additional_data_account_pubkeys = vec![];
+
+                for additional_data_account in additional_data_accounts {
+                    additional_data_account_pubkeys.push(additional_data_account.key);
+                }
+
                 if *pda_account.key != destination_program_id {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
@@ -256,18 +263,25 @@ impl NebulaProcessor {
                     &recipient_account.key,
                     &pda_account.key,
                     &[],
+                    &additional_data_account_pubkeys,
                 )?;
+
+                let mut cross_program_accounts = vec![
+                    initializer.clone(),
+                    ibport_data_account.clone(),
+                    subscriber_contract_program_id.clone(),
+                    mint.clone(),
+                    recipient_account.clone(),
+                    pda_account.clone(),
+                ];
+
+                for additional_account_info in additional_data_accounts {
+                    cross_program_accounts.push(additional_account_info.clone());
+                }
 
                 invoke_signed(
                     &instruction,
-                    &[
-                        initializer.clone(),
-                        ibport_data_account.clone(),
-                        subscriber_contract_program_id.clone(),
-                        mint.clone(),
-                        recipient_account.clone(),
-                        pda_account.clone(),
-                    ],
+                    cross_program_accounts.as_slice(),
                     &[&[
                         PDAResolver::Gravity.bump_seeds(),
                     ]]

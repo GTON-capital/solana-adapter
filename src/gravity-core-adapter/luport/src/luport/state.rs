@@ -153,6 +153,9 @@ impl LUPortContract {
                     return Err(PortError::InvalidRequestStatus.into());
                 }
 
+                msg!("input_pubkey.to_bytes(): {:?}", input_pubkey.to_bytes());
+                msg!("port_operation.receiver: {:?}", *port_operation.receiver);
+
                 if input_pubkey.to_bytes() != *port_operation.receiver {
                     return Err(PortError::ErrorOnReceiverUnpack.into());
                 }

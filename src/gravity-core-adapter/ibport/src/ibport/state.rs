@@ -179,6 +179,16 @@ impl IBPortContract {
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
             },
+            PortOperationIdentifier::CONFIRM => {
+                let port_operation = Self::unpack_byte_array(byte_data)?;
+                let swap_status = self.swap_status.get(port_operation.swap_id);
+
+
+                // if !swap_status.is_some() {
+                //     return Err(PortError::InvalidRequestStatus.into());
+                // }
+                
+            },
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
