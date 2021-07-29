@@ -9,6 +9,7 @@ use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retri
 
 use crate::ibport::allocs::allocation_by_instruction_index;
 use gravity_misc::ports::state::ForeignAddress;
+use gravity_misc::ports::instruction::ATTACH_VALUE_INSTRUCTION_INDEX;
 
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
 
@@ -93,7 +94,7 @@ impl IBPortContractInstruction {
                 }
             }
             // AttachValue
-            2 => {
+            ATTACH_VALUE_INSTRUCTION_INDEX => {
                 let byte_data = rest.to_vec();
 
                 Self::AttachValue { byte_data }
@@ -128,7 +129,7 @@ impl IBPortContractInstruction {
                 ref byte_data,
             } => {
                 let mut buf = byte_data.clone();
-                buf.insert(0, 2);
+                buf.insert(0, *ATTACH_VALUE_INSTRUCTION_INDEX);
                 buf
             },
             _ => buf

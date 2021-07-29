@@ -14,13 +14,15 @@ pub enum SubscriberInstruction {
     }
 }
 
+pub const ATTACH_VALUE_INSTRUCTION_INDEX: &u8 = &2;
+
 impl SubscriberInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
             // AttachValue
-            2 => {
+            ATTACH_VALUE_INSTRUCTION_INDEX => {
                 let byte_data = rest.to_vec();
 
                 Self::AttachValue { byte_data }
@@ -38,7 +40,7 @@ impl SubscriberInstruction {
                 ref byte_data,
             } => {
                 let mut buf = byte_data.clone();
-                buf.insert(0, 2);
+                buf.insert(0, *ATTACH_VALUE_INSTRUCTION_INDEX);
                 buf
             },
         }

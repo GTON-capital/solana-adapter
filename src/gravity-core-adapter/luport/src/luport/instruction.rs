@@ -6,9 +6,12 @@ use std::mem::size_of;
 use arrayref::array_ref;
 
 use gravity_misc::validation::{build_range_from_alloc, extract_from_range, retrieve_oracles};
+use gravity_misc::ports::{
+    state::ForeignAddress,
+    instruction::ATTACH_VALUE_INSTRUCTION_INDEX
+};
 
 use crate::luport::allocs::allocation_by_instruction_index;
-use gravity_misc::ports::state::ForeignAddress;
 
 use solana_gravity_contract::gravity::error::GravityError::InvalidInstruction;
 
@@ -31,10 +34,6 @@ pub enum LUPortContractInstruction {
     ConfirmDestinationChainRequest {
         byte_data: Vec<u8>,
     },
-    // TransferTokenOwnership {
-    //     new_authority: Pubkey,
-    //     new_token: Pubkey,
-    // }
 }
 
 
@@ -48,6 +47,12 @@ impl LUPortContractInstruction {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
+            // AttachValue
+            ATTACH_VALUE_INSTRUCTION_INDEX => {
+                let byte_data = rest.to_vec();
+
+                Self::AttachValue { byte_data }
+            }
             // InitContract
             0 => {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
@@ -90,12 +95,6 @@ impl LUPortContractInstruction {
                     receiver
                 }
             }
-            // AttachValue
-            2 => {
-                let byte_data = rest.to_vec();
-
-                Self::AttachValue { byte_data }
-            }
             // ConfirmDestinationChainRequest
             3 => {
                 let byte_data = rest.to_vec();
@@ -126,7 +125,7 @@ impl LUPortContractInstruction {
                 ref byte_data,
             } => {
                 let mut buf = byte_data.clone();
-                buf.insert(0, 2);
+                buf.insert(0, *ATTACH_VALUE_INSTRUCTION_INDEX);
                 buf
             },
             _ => buf

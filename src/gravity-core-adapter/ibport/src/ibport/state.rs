@@ -44,6 +44,24 @@ pub struct IBPortContract {
     pub requests_queue: RequestsQueue<[u8; 16]>,
 }
 
+/* Warning: backward compatibility is constrainted to production IB port data account */
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
+pub struct UpdatedIBPortContract {
+    pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
+    pub token_address: Pubkey, // binary
+    pub token_mint: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
+    pub initializer_pubkey: Pubkey,
+    pub oracles: Vec<Pubkey>,
+
+    pub swap_status: RecordHandler<[u8; 16], RequestStatus>,
+    pub requests: RecordHandler<[u8; 16], UnwrapRequest>,
+
+    pub is_state_initialized: bool,
+
+    pub requests_queue: RequestsQueue<[u8; 16]>,
+}
+
 impl TokenMintConstrained<PortError> for IBPortContract {
 
     fn bound_token_mint(&self) -> (Pubkey, PortError) {
@@ -51,6 +69,9 @@ impl TokenMintConstrained<PortError> for IBPortContract {
             susy_wrapped_gton_mint(),
             PortError::InvalidTokenMint
         )
+    }
+    fn validate_token_mint(&self, _inp: &Pubkey) -> Result<(), PortError> {
+        Ok(())
     }
 }
 

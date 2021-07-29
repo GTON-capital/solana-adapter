@@ -41,7 +41,7 @@ impl LUPortProcessor {
 
         let luport_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[0..5000])?;
+        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[0..3000])?;
 
         let mut luport_contract_info = LUPortContract::default();
 
@@ -117,7 +117,7 @@ impl LUPortProcessor {
                 initializer.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::LUPort.bump_seeds()]],
+            &[&[PDAResolver::Gravity.bump_seeds()]],
         )?;
 
         msg!("saving request info");
@@ -200,7 +200,7 @@ impl LUPortProcessor {
                     pda_account.clone(),
                     token_program_id.clone(),
                 ],
-                &[&[PDAResolver::LUPort.bump_seeds()]]
+                &[&[PDAResolver::Gravity.bump_seeds()]]
             )?;
         }
 

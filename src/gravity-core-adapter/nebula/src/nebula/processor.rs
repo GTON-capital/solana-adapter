@@ -44,7 +44,7 @@ impl NebulaProcessor {
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN])?;
 
         let mut nebula_contract_info = NebulaContract::default();
 
@@ -256,7 +256,7 @@ impl NebulaProcessor {
                         pda_account.clone(),
                     ],
                     &[&[
-                        PDAResolver::IBPort.bump_seeds(),
+                        PDAResolver::Gravity.bump_seeds(),
                     ]]
                 )?;
 

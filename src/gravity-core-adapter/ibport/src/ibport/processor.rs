@@ -50,7 +50,7 @@ impl IBPortProcessor {
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
+        validate_contract_emptiness(&ibport_contract_account.try_borrow_data()?[0..3000])?;
 
         let mut ibport_contract_info = IBPortContract::default();
 
@@ -127,7 +127,7 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::IBPort.bump_seeds()]],
+            &[&[PDAResolver::Gravity.bump_seeds()]],
         )?;
 
         msg!("saving request info");
@@ -165,7 +165,6 @@ impl IBPortProcessor {
 
         msg!("got the attach!");
         let initializer = next_account_info(account_info_iter)?;
-
         // TODO: Caller validation (1)
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
@@ -188,9 +187,6 @@ impl IBPortProcessor {
         let pda_account = next_account_info(account_info_iter)?;
 
         ibport_contract_info.validate_token_mint(mint.key)?;
-        // if *mint.key != susy_wrapped_gton_mint() {
-        //     return Err(PortError::InvalidTokenMint.into());
-        // }
 
         msg!("Creating mint instruction");
 
@@ -199,6 +195,8 @@ impl IBPortProcessor {
         let operation = ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         if operation == PortOperationIdentifier::MINT.to_string() {
+            msg!("unpacked ibport_contract_account");
+    
             let mint_ix = mint_to(
                 &token_program_id.key,
                 &mint.key,
@@ -216,7 +214,7 @@ impl IBPortProcessor {
                     pda_account.clone(),
                     token_program_id.clone(),
                 ],
-                &[&[PDAResolver::IBPort.bump_seeds()]]
+                &[&[PDAResolver::Gravity.bump_seeds()]]
             )?;
         }
 
@@ -321,7 +319,7 @@ impl IBPortProcessor {
                 current_owner.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::IBPort.bump_seeds()]]
+            &[&[PDAResolver::Gravity.bump_seeds()]]
         )?;
         
         let empty_addr: [u8; 32] = [0; 32];
@@ -351,7 +349,7 @@ impl IBPortProcessor {
                 oracles,
             } => {
                 msg!("Instruction: Init IB Port Contract");
-
+                
                 Self::process_init_ibport_contract(
                     accounts,
                     &token_address,

@@ -102,15 +102,16 @@ pub fn retrieve_oracles(
 
 
 pub enum PDAResolver {
-    IBPort,
-    LUPort
+    Gravity
+    // IBPort,
+    // LUPort
 }
 
 impl PDAResolver {
     pub fn bump_seeds(&self) -> &[u8] {
         match self {
-            PDAResolver::IBPort => br"ibport",
-            PDAResolver::LUPort => br"luport"
+            PDAResolver::Gravity => br"ibport",
+            // PDAResolver::LUPort => br"luport"
         }
     }
 }
