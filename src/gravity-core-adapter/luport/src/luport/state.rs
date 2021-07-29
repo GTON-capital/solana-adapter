@@ -66,7 +66,7 @@ impl TokenMintConstrained<PortError> for LUPortContract {
 }
 
 impl PartialStorage for LUPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..150000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..20000;
 }
 
 impl Sealed for LUPortContract {} 
@@ -79,7 +79,7 @@ impl IsInitialized for LUPortContract {
 
 
 impl Pack for LUPortContract {
-    const LEN: usize = 150000;
+    const LEN: usize = 20000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;

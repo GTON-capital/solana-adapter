@@ -34,7 +34,6 @@ impl LUPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -220,7 +219,6 @@ impl LUPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }

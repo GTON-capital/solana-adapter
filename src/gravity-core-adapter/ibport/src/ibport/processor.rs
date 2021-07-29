@@ -36,6 +36,7 @@ impl IBPortProcessor {
     fn process_init_ibport_contract(
         accounts: &[AccountInfo],
         token_address: &Pubkey,
+        token_mint: &Pubkey,
         nebula_address: &Pubkey,
         oracles: &Vec<Pubkey>,
         _program_id: &Pubkey,
@@ -43,7 +44,6 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -57,6 +57,7 @@ impl IBPortProcessor {
         ibport_contract_info.is_state_initialized = true;
         ibport_contract_info.token_address = *token_address;
         ibport_contract_info.nebula_address = *nebula_address;
+        ibport_contract_info.token_mint = *token_mint;
         ibport_contract_info.oracles = oracles.clone();
         ibport_contract_info.initializer_pubkey = *initializer.key;
 
@@ -234,7 +235,6 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -271,7 +271,6 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -345,6 +344,7 @@ impl IBPortProcessor {
         match instruction {
             IBPortContractInstruction::InitContract {
                 token_address,
+                token_mint,
                 nebula_address,
                 oracles,
             } => {
@@ -353,6 +353,7 @@ impl IBPortProcessor {
                 Self::process_init_ibport_contract(
                     accounts,
                     &token_address,
+                    &token_mint,
                     &nebula_address,
                     &oracles,
                     program_id,

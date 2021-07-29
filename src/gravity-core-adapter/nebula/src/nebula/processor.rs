@@ -41,6 +41,9 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -88,7 +91,11 @@ impl NebulaProcessor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let _initializer = next_account_info(account_info_iter)?;
+
+        let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -132,7 +139,10 @@ impl NebulaProcessor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
-        let _initializer = next_account_info(account_info_iter)?;
+        let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -191,6 +201,9 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -282,7 +295,11 @@ impl NebulaProcessor {
         _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 

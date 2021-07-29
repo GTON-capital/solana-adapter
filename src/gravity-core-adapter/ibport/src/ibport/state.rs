@@ -23,7 +23,7 @@ use gravity_misc::ports::state::{
 use arrayref::array_ref;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::ibport::token::susy_wrapped_gton_mint;
+// use crate::ibport::token::susy_wrapped_gton_mint;
 
 pub type UnwrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 
@@ -32,7 +32,8 @@ pub type UnwrapRequest = GenericRequest<Pubkey, ForeignAddress>;
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Default, Debug, Clone)]
 pub struct IBPortContract {
     pub nebula_address: Pubkey, // distinct nebula address (not nebula data account)
-    pub token_address: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
+    pub token_address: Pubkey, // binary
+    pub token_mint: Pubkey, // common token info, (result of spl-token create-token or as it so called - 'the mint')
     pub initializer_pubkey: Pubkey,
     pub oracles: Vec<Pubkey>,
 
@@ -66,12 +67,9 @@ impl TokenMintConstrained<PortError> for IBPortContract {
 
     fn bound_token_mint(&self) -> (Pubkey, PortError) {
         return (
-            susy_wrapped_gton_mint(),
+            self.token_mint,
             PortError::InvalidTokenMint
         )
-    }
-    fn validate_token_mint(&self, _inp: &Pubkey) -> Result<(), PortError> {
-        Ok(())
     }
 }
 
@@ -86,7 +84,7 @@ impl RequestCountConstrained for IBPortContract {
 } 
 
 impl PartialStorage for IBPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..150000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..20000;
 }
 
 impl Sealed for IBPortContract {} 
@@ -99,7 +97,7 @@ impl IsInitialized for IBPortContract {
 
 
 impl Pack for IBPortContract {
-    const LEN: usize = 150000;
+    const LEN: usize = 20000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;

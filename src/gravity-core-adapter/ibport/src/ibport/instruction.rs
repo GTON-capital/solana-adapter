@@ -18,6 +18,7 @@ pub enum IBPortContractInstruction {
     InitContract {
         nebula_address: Pubkey,
         token_address: Pubkey,
+        token_mint: Pubkey,
         oracles: Vec<Pubkey>,
     },
     CreateTransferUnwrapRequest {
@@ -53,28 +54,25 @@ impl IBPortContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
 
-                let (nebula_address, token_address) = (
+                let (nebula_address, token_address, token_mint) = (
                     Pubkey::new(&rest[ranges[0].clone()]),
-                    Pubkey::new(&rest[ranges[1].clone()])
+                    Pubkey::new(&rest[ranges[1].clone()]),
+                    Pubkey::new(&rest[ranges[2].clone()]),
                 );
+                
+                let mut offset = 32 * 3;
+                let oracles_bft_range = offset..offset + 1;
+                let oracles_bft = extract_from_range(rest, oracles_bft_range, |x: &[u8]| {
+                    u8::from_le_bytes(*array_ref![x, 0, 1])
+                })?;
+                offset += 1;
+                let oracles = retrieve_oracles(rest, offset..offset + (oracles_bft as usize * 32), oracles_bft)?;
 
-                if rest.len() == 64 {
-                    Self::InitContract {
-                        nebula_address,
-                        token_address,
-                        oracles: Vec::new(),
-                    }
-                } else {
-                    let oracles_bft = extract_from_range(rest, 64..65, |x: &[u8]| {
-                        u8::from_le_bytes(*array_ref![x, 0, 1])
-                    })?;
-                    let oracles = retrieve_oracles(rest, 65..65 + (oracles_bft as usize * 32), oracles_bft)?;
-
-                    Self::InitContract {
-                        nebula_address,
-                        token_address,
-                        oracles,
-                    }
+                Self::InitContract {
+                    nebula_address,
+                    token_address,
+                    token_mint,
+                    oracles,
                 }
             }
             // CreateTransferUnwrapRequest
