@@ -36,6 +36,7 @@ impl IBPortProcessor {
     fn process_init_ibport_contract(
         accounts: &[AccountInfo],
         token_address: &Pubkey,
+        token_mint: &Pubkey,
         nebula_address: &Pubkey,
         oracles: &Vec<Pubkey>,
         _program_id: &Pubkey,
@@ -43,20 +44,20 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
         let ibport_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&ibport_contract_account.try_borrow_data()?[..])?;
+        validate_contract_emptiness(&ibport_contract_account.try_borrow_data()?[0..3000])?;
 
         let mut ibport_contract_info = IBPortContract::default();
 
         ibport_contract_info.is_state_initialized = true;
         ibport_contract_info.token_address = *token_address;
         ibport_contract_info.nebula_address = *nebula_address;
+        ibport_contract_info.token_mint = *token_mint;
         ibport_contract_info.oracles = oracles.clone();
         ibport_contract_info.initializer_pubkey = *initializer.key;
 
@@ -127,7 +128,7 @@ impl IBPortProcessor {
                 pda_account.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::IBPort.bump_seeds()]],
+            &[&[PDAResolver::Gravity.bump_seeds()]],
         )?;
 
         msg!("saving request info");
@@ -165,7 +166,6 @@ impl IBPortProcessor {
 
         msg!("got the attach!");
         let initializer = next_account_info(account_info_iter)?;
-
         // TODO: Caller validation (1)
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
@@ -188,9 +188,6 @@ impl IBPortProcessor {
         let pda_account = next_account_info(account_info_iter)?;
 
         ibport_contract_info.validate_token_mint(mint.key)?;
-        // if *mint.key != susy_wrapped_gton_mint() {
-        //     return Err(PortError::InvalidTokenMint.into());
-        // }
 
         msg!("Creating mint instruction");
 
@@ -199,6 +196,8 @@ impl IBPortProcessor {
         let operation = ibport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         if operation == PortOperationIdentifier::MINT.to_string() {
+            msg!("unpacked ibport_contract_account");
+    
             let mint_ix = mint_to(
                 &token_program_id.key,
                 &mint.key,
@@ -216,7 +215,7 @@ impl IBPortProcessor {
                     pda_account.clone(),
                     token_program_id.clone(),
                 ],
-                &[&[PDAResolver::IBPort.bump_seeds()]]
+                &[&[PDAResolver::Gravity.bump_seeds()]]
             )?;
         }
 
@@ -236,7 +235,6 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -273,7 +271,6 @@ impl IBPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -321,7 +318,7 @@ impl IBPortProcessor {
                 current_owner.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::IBPort.bump_seeds()]]
+            &[&[PDAResolver::Gravity.bump_seeds()]]
         )?;
         
         let empty_addr: [u8; 32] = [0; 32];
@@ -347,14 +344,16 @@ impl IBPortProcessor {
         match instruction {
             IBPortContractInstruction::InitContract {
                 token_address,
+                token_mint,
                 nebula_address,
                 oracles,
             } => {
                 msg!("Instruction: Init IB Port Contract");
-
+                
                 Self::process_init_ibport_contract(
                     accounts,
                     &token_address,
+                    &token_mint,
                     &nebula_address,
                     &oracles,
                     program_id,

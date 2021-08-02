@@ -107,8 +107,6 @@ impl NebulaContract {
         Ok(())
     }
 
-    const SERIALIZE_CONTEXT: u16 = 50;
-
     pub fn unsubscribe(
         &mut self,
         _subscription_id: &SubscriptionID,
@@ -163,6 +161,8 @@ impl NebulaContract {
         let sha256_hashed = solana_program::hash::hash(raw_data_value.clone().as_slice());
 
         msg!("sha256_hashed: {:?} \n", &sha256_hashed);
+        msg!("sha256_hashed(bytes): {:?} \n", & sha256_hashed.to_bytes());
+        msg!("sha256_hashed(bytes.to_vec()): {:?} \n", & sha256_hashed.to_bytes().to_vec());
         msg!("raw_data_value: {:?} \n", raw_data_value);
 
         let pulse = &Pulse {

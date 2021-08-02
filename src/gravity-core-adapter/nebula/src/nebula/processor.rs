@@ -20,7 +20,10 @@ use solana_gravity_contract::gravity::{
 use crate::nebula::instruction::NebulaContractInstruction;
 use crate::nebula::state::{NebulaContract};
 use crate::nebula::error::NebulaError;
-use solana_port_contract::ibport::instruction::attach_value;
+
+// use solana_port_contract::ibport::instruction::attach_value;
+use gravity_misc::ports::instruction::attach_value;
+
 use gravity_misc::model::{DataType, PulseID, SubscriptionID};
 use gravity_misc::validation::PDAResolver;
 
@@ -38,10 +41,13 @@ impl NebulaProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[..])?;
+        validate_contract_emptiness(&nebula_contract_account.try_borrow_data()?[0..NebulaContract::LEN])?;
 
         let mut nebula_contract_info = NebulaContract::default();
 
@@ -85,7 +91,11 @@ impl NebulaProcessor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let _initializer = next_account_info(account_info_iter)?;
+
+        let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -129,7 +139,10 @@ impl NebulaProcessor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
-        let _initializer = next_account_info(account_info_iter)?;
+        let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -184,10 +197,13 @@ impl NebulaProcessor {
         subscription_id: &SubscriptionID,
         _program_id: &Pubkey,
     ) -> ProgramResult {
-        let _accounts_copy = accounts.clone();
+        // let _accounts_copy = accounts.clone();
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 
@@ -196,7 +212,7 @@ impl NebulaProcessor {
         )?;
 
         let nebula_contract_multisig_account = next_account_info(account_info_iter)?;
-        let _nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
+        // let _nebula_contract_multisig_account_pubkey = nebula_contract_info.multisig_account;
 
         msg!("checking multisig bft count");
 
@@ -208,7 +224,6 @@ impl NebulaProcessor {
             initializer.key,
         )?;
 
-        
         match nebula_contract_info.send_value_to_subs(pulse_id, subscription_id) {
             Ok(subscription) => {
 
@@ -227,6 +242,13 @@ impl NebulaProcessor {
                 let recipient_account = next_account_info(account_info_iter)?;
                 let pda_account = next_account_info(account_info_iter)?;
 
+                let additional_data_accounts = &accounts[9..].to_vec();
+                let mut additional_data_account_pubkeys = vec![];
+
+                for additional_data_account in additional_data_accounts {
+                    additional_data_account_pubkeys.push(additional_data_account.key);
+                }
+
                 if *pda_account.key != destination_program_id {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
                 }
@@ -241,20 +263,27 @@ impl NebulaProcessor {
                     &recipient_account.key,
                     &pda_account.key,
                     &[],
+                    &additional_data_account_pubkeys,
                 )?;
+
+                let mut cross_program_accounts = vec![
+                    initializer.clone(),
+                    ibport_data_account.clone(),
+                    subscriber_contract_program_id.clone(),
+                    mint.clone(),
+                    recipient_account.clone(),
+                    pda_account.clone(),
+                ];
+
+                for additional_account_info in additional_data_accounts {
+                    cross_program_accounts.push(additional_account_info.clone());
+                }
 
                 invoke_signed(
                     &instruction,
-                    &[
-                        initializer.clone(),
-                        ibport_data_account.clone(),
-                        subscriber_contract_program_id.clone(),
-                        mint.clone(),
-                        recipient_account.clone(),
-                        pda_account.clone(),
-                    ],
+                    cross_program_accounts.as_slice(),
                     &[&[
-                        PDAResolver::IBPort.bump_seeds(),
+                        PDAResolver::Gravity.bump_seeds(),
                     ]]
                 )?;
 
@@ -280,7 +309,11 @@ impl NebulaProcessor {
         _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+
         let initializer = next_account_info(account_info_iter)?;
+        if !initializer.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
 
         let nebula_contract_account = next_account_info(account_info_iter)?;
 

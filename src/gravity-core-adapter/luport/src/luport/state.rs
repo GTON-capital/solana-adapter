@@ -66,7 +66,7 @@ impl TokenMintConstrained<PortError> for LUPortContract {
 }
 
 impl PartialStorage for LUPortContract {
-    const DATA_RANGE: std::ops::Range<usize> = 0..150000;
+    const DATA_RANGE: std::ops::Range<usize> = 0..20000;
 }
 
 impl Sealed for LUPortContract {} 
@@ -79,7 +79,7 @@ impl IsInitialized for LUPortContract {
 
 
 impl Pack for LUPortContract {
-    const LEN: usize = 150000;
+    const LEN: usize = 20000;
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let mut mut_src: &[u8] = src;
@@ -153,6 +153,9 @@ impl LUPortContract {
                     return Err(PortError::InvalidRequestStatus.into());
                 }
 
+                msg!("input_pubkey.to_bytes(): {:?}", input_pubkey.to_bytes());
+                msg!("port_operation.receiver: {:?}", *port_operation.receiver);
+
                 if input_pubkey.to_bytes() != *port_operation.receiver {
                     return Err(PortError::ErrorOnReceiverUnpack.into());
                 }
@@ -160,6 +163,20 @@ impl LUPortContract {
                 *input_amount = port_operation.amount_to_u64();
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
+            },
+            PortOperationIdentifier::CONFIRM => {
+                // let port_operation = Self::unpack_byte_array(byte_data)?;
+                // let swap_status = self.swap_status.get(port_operation.swap_id);
+
+                // if !swap_status.is_some() {
+                //     return Err(PortError::InvalidRequestStatus.into());
+                // }
+
+                // if input_pubkey.to_bytes() != *port_operation.receiver {
+                //     return Err(PortError::ErrorOnReceiverUnpack.into());
+                // }
+                
+                self.drop_processed_request(byte_data)?;
             },
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
@@ -197,6 +214,8 @@ impl LUPortContract {
         if request_drop_res.amount != port_amount {
             return Err(PortError::RequestAmountMismatch.into());
         }
+
+        self.swap_status.drop(request_id).unwrap();
 
         let rq_queue_index = self.requests_queue.iter().position(|r| *r == *request_id).unwrap();
         self.requests_queue.remove(rq_queue_index);

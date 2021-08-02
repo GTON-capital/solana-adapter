@@ -9,7 +9,7 @@ use solana_program::{
 };
 
 use spl_token::{
-    instruction::{transfer, set_authority, AuthorityType},
+    instruction::transfer,
 };
 
 
@@ -34,14 +34,13 @@ impl LUPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
         let luport_contract_account = next_account_info(account_info_iter)?;
 
-        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[0..5000])?;
+        validate_contract_emptiness(&luport_contract_account.try_borrow_data()?[0..3000])?;
 
         let mut luport_contract_info = LUPortContract::default();
 
@@ -96,7 +95,6 @@ impl LUPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let token_holder = next_account_info(account_info_iter)?;
         let token_receiver = next_account_info(account_info_iter)?;
-        let token_holder_account_owner_pda = next_account_info(account_info_iter)?;
 
         luport_contract_info.validate_token_mint(mint.key)?;
 
@@ -105,7 +103,7 @@ impl LUPortProcessor {
             &token_program_id.key,
             &token_holder.key,
             &token_receiver.key,
-            &token_holder_account_owner_pda.key,
+            &initializer.key,
             &[],
             amount
         )?;
@@ -115,10 +113,10 @@ impl LUPortProcessor {
             &[
                 token_holder.clone(),
                 token_receiver.clone(),
-                token_holder_account_owner_pda.clone(),
+                initializer.clone(),
                 token_program_id.clone(),
             ],
-            &[&[PDAResolver::LUPort.bump_seeds()]],
+            &[&[PDAResolver::Gravity.bump_seeds()]],
         )?;
 
         msg!("saving request info");
@@ -174,6 +172,7 @@ impl LUPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+        let token_holder = next_account_info(account_info_iter)?;
 
         luport_contract_info.validate_token_mint(mint.key)?;
 
@@ -184,9 +183,9 @@ impl LUPortProcessor {
         let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         if operation == PortOperationIdentifier::UNLOCK {
-            let mint_ix = transfer(
+            let transfer_ix = transfer(
                 &token_program_id.key,
-                &mint.key,
+                &token_holder.key,
                 &recipient_account.key,
                 &pda_account.key,
                 &[],
@@ -194,14 +193,14 @@ impl LUPortProcessor {
             )?;
 
             invoke_signed(
-                &mint_ix,
+                &transfer_ix,
                 &[
-                    mint.clone(),
+                    token_holder.clone(),
                     recipient_account.clone(),
                     pda_account.clone(),
                     token_program_id.clone(),
                 ],
-                &[&[PDAResolver::LUPort.bump_seeds()]]
+                &[&[PDAResolver::Gravity.bump_seeds()]]
             )?;
         }
 
@@ -221,7 +220,6 @@ impl LUPortProcessor {
         let account_info_iter = &mut accounts.iter();
 
         let initializer = next_account_info(account_info_iter)?;
-
         if !initializer.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -245,79 +243,6 @@ impl LUPortProcessor {
             &mut luport_contract_account.try_borrow_mut_data()?[0..LUPortContract::LEN],
         )?;
 
-
-        Ok(())
-    }
-
-    fn process_transfer_ownership(
-        accounts: &[AccountInfo],
-        new_authority: &Pubkey,
-        new_token_address: &Pubkey,
-        _program_id: &Pubkey,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-
-        let initializer = next_account_info(account_info_iter)?;
-
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let luport_contract_account = next_account_info(account_info_iter)?;
-
-        let mut luport_contract_info =
-            LUPortContract::unpack(&luport_contract_account.data.borrow()[0..LUPortContract::LEN])?;
-
-        msg!("validating initializer");
-        Self::validate_data_provider(
-            &luport_contract_info.oracles,
-            initializer.key,
-        )?;
-
-
-        // pub fn set_authority(
-        //     token_program_id: &Pubkey, 
-        //     owned_pubkey: &Pubkey, 
-        //     new_authority_pubkey: Option<&Pubkey>, 
-        //     authority_type: AuthorityType, 
-        //     owner_pubkey: &Pubkey, 
-        //     signer_pubkeys: &[&Pubkey]
-        // ) -> Result<Instruction, ProgramError>
-
-        let mint = next_account_info(account_info_iter)?;
-        let current_owner = next_account_info(account_info_iter)?;
-        let token_program_id = next_account_info(account_info_iter)?;
-
-        msg!("set new token owner");
-
-        let set_authority_ix = set_authority(
-            &spl_token::id(),
-            mint.key,
-            Some(new_authority),
-            AuthorityType::MintTokens,
-            current_owner.key,
-            &[],
-        )?;
-
-        invoke_signed(
-            &set_authority_ix,
-            &[
-                mint.clone(),
-                current_owner.clone(),
-                token_program_id.clone(),
-            ],
-            &[&[PDAResolver::LUPort.bump_seeds()]]
-        )?;
-        
-        let empty_addr: [u8; 32] = [0; 32];
-        if new_token_address.to_bytes() != empty_addr {
-            luport_contract_info.token_address = *new_token_address;
-
-            LUPortContract::pack(
-                luport_contract_info,
-                &mut luport_contract_account.try_borrow_mut_data()?[0..LUPortContract::LEN],
-            )?;
-        }
 
         Ok(())
     }
@@ -384,19 +309,6 @@ impl LUPortProcessor {
                     program_id,
                 )
             }
-            LUPortContractInstruction::TransferTokenOwnership {
-                new_authority, new_token
-            } => {
-                msg!("Instruction: ConfirmDestinationChainRequest");
-
-                Self::process_transfer_ownership(
-                    accounts,
-                    &new_authority,
-                    &new_token,
-                    program_id,
-                )
-            }
-            // _ => Err(GravityError::InvalidInstruction.into()),
         }
     }    
 }
