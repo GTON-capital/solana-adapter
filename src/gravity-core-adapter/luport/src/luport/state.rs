@@ -164,6 +164,20 @@ impl LUPortContract {
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
             },
+            PortOperationIdentifier::CONFIRM => {
+                // let port_operation = Self::unpack_byte_array(byte_data)?;
+                // let swap_status = self.swap_status.get(port_operation.swap_id);
+
+                // if !swap_status.is_some() {
+                //     return Err(PortError::InvalidRequestStatus.into());
+                // }
+
+                // if input_pubkey.to_bytes() != *port_operation.receiver {
+                //     return Err(PortError::ErrorOnReceiverUnpack.into());
+                // }
+                
+                self.drop_processed_request(byte_data)?;
+            },
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
@@ -200,6 +214,8 @@ impl LUPortContract {
         if request_drop_res.amount != port_amount {
             return Err(PortError::RequestAmountMismatch.into());
         }
+
+        self.swap_status.drop(request_id).unwrap();
 
         let rq_queue_index = self.requests_queue.iter().position(|r| *r == *request_id).unwrap();
         self.requests_queue.remove(rq_queue_index);

@@ -145,7 +145,7 @@ impl LUPortProcessor {
     fn process_attach_value<'a, 't: 'a>(
         accounts: &[AccountInfo<'t>],
         byte_data: &Vec<u8>,
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
