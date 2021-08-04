@@ -4,16 +4,21 @@ pub fn operational_fee() -> f64 {
     0.1
 }
 
-pub fn apply_fee(input: f64) -> f64 {
+fn calc_fee(input: f64) -> f64 {
     let percentage: f64 = 100.0;
-    let fee = operational_fee() * input / percentage;
-    input - fee
+    operational_fee() * input / percentage
+}
+pub fn apply_fee(input: f64) -> (f64, f64) {
+    // let percentage: f64 = 100.0;
+    // let fee = operational_fee() * input / percentage;
+    let fee = calc_fee(input);
+    (input - fee, fee)
 }
 
-pub fn apply_fee_lamports(input: u64, decimals: u8) -> u64 {
+pub fn apply_fee_lamports(input: u64, decimals: u8) -> (u64, u64) {
     let casted = lamports_to_float(input, decimals);
-    let casted = apply_fee(casted);
-    float_to_lamports(casted, decimals)
+    let (casted_amount, casted_fee) = apply_fee(casted);
+    (float_to_lamports(casted_amount, decimals), float_to_lamports(casted_fee, decimals))
 }
 
 fn lamports_to_float(input: u64, decimals: u8) -> f64 {
@@ -41,11 +46,14 @@ mod tests {
         assert_eq!(amount_lamports, float_to_lamports(amount, decimals));
         assert_eq!(lamports_fee_taken, float_to_lamports(fee_taken, decimals));
 
-        let fee_taken_calc = apply_fee(amount);
-        let fee_taken_calc_lamports = apply_fee_lamports(amount_lamports, decimals);
+        let (fee_taken_calc, fee_calc) = apply_fee(amount);
+        let (fee_taken_calc_lamports, fee_calc_lamports) = apply_fee_lamports(amount_lamports, decimals);
 
         assert_eq!(fee_taken, fee_taken_calc);
         assert_eq!(lamports_fee_taken, fee_taken_calc_lamports);
+
+        assert_eq!(calc_fee(amount), fee_calc);
+        assert_eq!(float_to_lamports(calc_fee(lamports_to_float(amount_lamports, decimals)), decimals), fee_calc_lamports);
     }
 
     struct Input {

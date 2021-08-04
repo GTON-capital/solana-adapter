@@ -9,7 +9,7 @@ use solana_program::{
 };
 
 use spl_token::{
-    instruction::{burn, mint_to, set_authority, AuthorityType},
+    instruction::{burn, transfer, mint_to, set_authority, AuthorityType},
 };
 
 use gravity_misc::validation::validate_contract_emptiness;
@@ -22,6 +22,7 @@ use crate::ibport::instruction::IBPortContractInstruction;
 use crate::ibport::state::IBPortContract;
 
 use gravity_misc::ports::error::PortError;
+use gravity_misc::ports::fee::apply_fee_lamports;
 use gravity_misc::ports::state::PortOperationIdentifier;
 use gravity_misc::validation::{PDAResolver, validate_pubkey_match, TokenMintConstrained};
 
@@ -38,6 +39,7 @@ impl IBPortProcessor {
         token_address: &Pubkey,
         token_mint: &Pubkey,
         nebula_address: &Pubkey,
+        fee_collector: &Pubkey,
         oracles: &Vec<Pubkey>,
         _program_id: &Pubkey,
     ) -> ProgramResult {
@@ -60,6 +62,7 @@ impl IBPortProcessor {
         ibport_contract_info.token_mint = *token_mint;
         ibport_contract_info.oracles = oracles.clone();
         ibport_contract_info.initializer_pubkey = *initializer.key;
+        ibport_contract_info.fee_collector = *fee_collector;
 
         msg!("instantiated ib port contract");
 
@@ -105,11 +108,11 @@ impl IBPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let token_holder = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+        let fee_authority = next_account_info(account_info_iter)?;
+        let fee_token_account = next_account_info(account_info_iter)?;
 
         ibport_contract_info.validate_token_mint(mint.key)?;
-        // if *mint.key != susy_wrapped_gton_mint() {
-        //     return Err(PortError::InvalidTokenMint.into());
-        // }
+        let (amount_fee_taken, fee) = apply_fee_lamports(amount, 8);
 
         let burn_ix = burn(
             &token_program_id.key,
@@ -117,9 +120,27 @@ impl IBPortProcessor {
             &mint.key,
             &pda_account.key,
             &[],
-            amount,
+            amount_fee_taken,
+        )?;
+        let transfer_ix = transfer(
+            &token_program_id.key,
+            &fee_authority.key,
+            &fee_token_account.key,
+            &pda_account.key,
+            &[],
+            fee,
         )?;
 
+        invoke_signed(
+            &transfer_ix,
+            &[
+                fee_authority.clone(),
+                fee_token_account.clone(),
+                pda_account.clone(),
+                token_program_id.clone(),
+            ],
+            &[&[PDAResolver::Gravity.bump_seeds()]],
+        )?;
         invoke_signed(
             &burn_ix,
             &[
@@ -197,6 +218,7 @@ impl IBPortProcessor {
 
         if operation == PortOperationIdentifier::MINT.to_string() {
             msg!("unpacked ibport_contract_account");
+            let (amount_fee_taken, fee) = apply_fee_lamports(amount, 8);
     
             let mint_ix = mint_to(
                 &token_program_id.key,
@@ -204,7 +226,7 @@ impl IBPortProcessor {
                 &recipient_account.key,
                 &pda_account.key,
                 &[],
-                amount,
+                amount_fee_taken,
             )?;
 
             invoke_signed(
@@ -345,6 +367,7 @@ impl IBPortProcessor {
             IBPortContractInstruction::InitContract {
                 token_address,
                 token_mint,
+                fee_collector,
                 nebula_address,
                 oracles,
             } => {
@@ -355,6 +378,7 @@ impl IBPortProcessor {
                     &token_address,
                     &token_mint,
                     &nebula_address,
+                    &fee_collector,
                     &oracles,
                     program_id,
                 )

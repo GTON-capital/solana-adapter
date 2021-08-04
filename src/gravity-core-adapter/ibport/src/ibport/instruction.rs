@@ -19,6 +19,7 @@ pub enum IBPortContractInstruction {
         nebula_address: Pubkey,
         token_address: Pubkey,
         token_mint: Pubkey,
+        fee_collector: Pubkey,
         oracles: Vec<Pubkey>,
     },
     CreateTransferUnwrapRequest {
@@ -54,10 +55,11 @@ impl IBPortContractInstruction {
                 let allocs = allocation_by_instruction_index((*tag).into(), None)?;
                 let ranges = build_range_from_alloc(&allocs);
 
-                let (nebula_address, token_address, token_mint) = (
+                let (nebula_address, token_address, token_mint, fee_collector) = (
                     Pubkey::new(&rest[ranges[0].clone()]),
                     Pubkey::new(&rest[ranges[1].clone()]),
                     Pubkey::new(&rest[ranges[2].clone()]),
+                    Pubkey::new(&rest[ranges[3].clone()]),
                 );
                 
                 let mut offset = 32 * 3;
@@ -73,6 +75,7 @@ impl IBPortContractInstruction {
                     token_address,
                     token_mint,
                     oracles,
+                    fee_collector,
                 }
             }
             // CreateTransferUnwrapRequest

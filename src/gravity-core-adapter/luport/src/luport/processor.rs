@@ -15,7 +15,7 @@ use spl_token::{
 
 use crate::luport::instruction::LUPortContractInstruction;
 use crate::luport::state::LUPortContract;
-use gravity_misc::ports::error::PortError;
+use gravity_misc::ports::fee::apply_fee_big;
 use gravity_misc::ports::state::{PortOperationIdentifier, ForeignAddress};
 use gravity_misc::validation::{PDAResolver, TokenMintConstrained, validate_pubkey_match, validate_contract_emptiness};
 
@@ -179,10 +179,14 @@ impl LUPortProcessor {
         msg!("Creating unlock IX");
 
         let mut amount: u64 = 0;
-        
+
+        // let token_mint_data = Mint
+
         let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
 
         if operation == PortOperationIdentifier::UNLOCK {
+            let amount = apply_fee_big(amount, );
+
             let transfer_ix = transfer(
                 &token_program_id.key,
                 &token_holder.key,
