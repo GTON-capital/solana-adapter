@@ -18,6 +18,7 @@ pub fn allocation_by_instruction_index(
             LUPortContractInstruction::DEST_AMOUNT_ALLOC,
             LUPortContractInstruction::FOREIGN_ADDRESS_ALLOC,
             16,
+            1,
         ],
         // AttachValue
         2 => vec![LUPortContractInstruction::ATTACHED_DATA_ALLOC],

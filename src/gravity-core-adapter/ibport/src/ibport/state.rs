@@ -175,7 +175,7 @@ impl IBPortContract {
                     return Err(PortError::ErrorOnReceiverUnpack.into());
                 }
                 
-                *input_amount = port_operation.amount_to_u64();
+                *input_amount = port_operation.amount_to_u64(8);
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
             },
@@ -224,7 +224,7 @@ impl IBPortContract {
             return Err(PortError::RequestStatusMismatch.into());
         }
         
-        let port_amount = port_operation.amount_to_u64();
+        let port_amount = port_operation.amount_to_u64(8);
 
         if request_drop_res.amount != port_amount {
             return Err(PortError::RequestAmountMismatch.into());

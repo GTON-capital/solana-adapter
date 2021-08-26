@@ -92,8 +92,7 @@ impl IBPortProcessor {
         let mut ibport_contract_info =
             IBPortContract::unpack(&ibport_contract_account.data.borrow()[0..IBPortContract::LEN])?;
 
-        let decimals = 8;
-        let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+        let amount = spl_token::ui_amount_to_amount(ui_amount, 8);
 
         // Get the accounts to mint
         let token_program_id = next_account_info(account_info_iter)?;

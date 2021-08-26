@@ -86,17 +86,17 @@ pub struct GenericPortOperation<'a, R> {
 }
 
 impl<'a, R> GenericPortOperation<'a, R> {
-    pub fn decimals() -> u8 {
-        8
-    }
+    // pub fn decimals() -> u8 {
+    //     8
+    // }
 
     pub fn amount_to_f64(&self) -> f64 {
         let raw_amount = array_ref![self.amount, 0, 8];
         f64::from_le_bytes(*raw_amount)
     }
 
-    pub fn amount_to_u64(&self) -> u64 {
-        let decimals = Self::decimals();
+    pub fn amount_to_u64(&self, decimals: u8) -> u64 {
+        // let decimals = Self::decimals();
         spl_token::ui_amount_to_amount(self.amount_to_f64(), decimals)
     }
 }
