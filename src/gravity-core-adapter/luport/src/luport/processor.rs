@@ -10,6 +10,7 @@ use solana_program::{
 
 use spl_token::{
     instruction::transfer,
+    state::Mint,
 };
 
 
@@ -82,8 +83,6 @@ impl LUPortProcessor {
         let mut luport_contract_info =
             LUPortContract::unpack(&luport_contract_account.data.borrow()[0..LUPortContract::LEN])?;
 
-        let decimals = 8;
-        let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
         let token_program_id = next_account_info(account_info_iter)?;
 
@@ -93,6 +92,11 @@ impl LUPortProcessor {
 
         // common token info
         let mint = next_account_info(account_info_iter)?;
+
+        let token_mint_info = Mint::unpack(&mint.data.borrow()[0..Mint::LEN])?;
+
+        let amount = spl_token::ui_amount_to_amount(ui_amount, token_mint_info.decimals);
+
         let token_holder = next_account_info(account_info_iter)?;
         let token_receiver = next_account_info(account_info_iter)?;
 
@@ -172,6 +176,9 @@ impl LUPortProcessor {
         let mint = next_account_info(account_info_iter)?;
         let recipient_account = next_account_info(account_info_iter)?;
         let pda_account = next_account_info(account_info_iter)?;
+
+        let _ = next_account_info(account_info_iter)?;
+        
         let token_holder = next_account_info(account_info_iter)?;
 
         luport_contract_info.validate_token_mint(mint.key)?;
@@ -179,8 +186,9 @@ impl LUPortProcessor {
         msg!("Creating unlock IX");
 
         let mut amount: u64 = 0;
-        
-        let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount)?;
+
+        let token_mint_info = Mint::unpack(&mint.data.borrow()[0..Mint::LEN])?;
+        let operation = luport_contract_info.attach_data(byte_data, recipient_account.key, &mut amount, &token_mint_info)?;
 
         if operation == PortOperationIdentifier::UNLOCK {
             let transfer_ix = transfer(
@@ -208,41 +216,6 @@ impl LUPortProcessor {
             luport_contract_info,
             &mut luport_contract_account.try_borrow_mut_data()?[0..LUPortContract::LEN],
         )?;
-
-        Ok(())
-    }
-
-    fn process_confirm_destination_chain_request(
-        accounts: &[AccountInfo],
-        byte_data: &Vec<u8>,
-        _program_id: &Pubkey,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-
-        let initializer = next_account_info(account_info_iter)?;
-        if !initializer.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let luport_contract_account = next_account_info(account_info_iter)?;
-
-        let mut luport_contract_info =
-            LUPortContract::unpack(&luport_contract_account.data.borrow()[0..LUPortContract::LEN])?;
-
-        msg!("validating initializer");
-        Self::validate_data_provider(
-            &luport_contract_info.oracles,
-            initializer.key,
-        )?;
-
-        msg!("dropping processed request");
-        luport_contract_info.drop_processed_request(byte_data)?;
-        
-        LUPortContract::pack(
-            luport_contract_info,
-            &mut luport_contract_account.try_borrow_mut_data()?[0..LUPortContract::LEN],
-        )?;
-
 
         Ok(())
     }
@@ -275,7 +248,7 @@ impl LUPortProcessor {
             LUPortContractInstruction::CreateTransferUnwrapRequest {
                 request_id,
                 amount,
-                receiver
+                receiver,
             } => {
                 msg!("Instruction: CreateTransferUnwrapRequest");
 
@@ -293,17 +266,6 @@ impl LUPortProcessor {
                 msg!("Instruction: AttachValue");
 
                 Self::process_attach_value(
-                    accounts,
-                    &byte_data,
-                    program_id,
-                )
-            }
-            LUPortContractInstruction::ConfirmDestinationChainRequest {
-                byte_data
-            } => {
-                msg!("Instruction: ConfirmDestinationChainRequest");
-
-                Self::process_confirm_destination_chain_request(
                     accounts,
                     &byte_data,
                     program_id,

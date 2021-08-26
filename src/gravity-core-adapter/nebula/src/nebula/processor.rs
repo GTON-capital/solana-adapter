@@ -242,12 +242,12 @@ impl NebulaProcessor {
                 let recipient_account = next_account_info(account_info_iter)?;
                 let pda_account = next_account_info(account_info_iter)?;
 
-                let additional_data_accounts = &accounts[9..].to_vec();
-                let mut additional_data_account_pubkeys = vec![];
+                let additional_data_accounts = &accounts[9..].to_vec().clone();
+                // let mut additional_data_account_pubkeys = vec![];
 
-                for additional_data_account in additional_data_accounts {
-                    additional_data_account_pubkeys.push(additional_data_account.key);
-                }
+                // for additional_data_account in additional_data_accounts {
+                //     additional_data_account_pubkeys.push(additional_data_account.key);
+                // }
 
                 if *pda_account.key != destination_program_id {
                     return Err(NebulaError::InvalidSubscriptionProgramID.into());
@@ -263,7 +263,7 @@ impl NebulaProcessor {
                     &recipient_account.key,
                     &pda_account.key,
                     &[],
-                    &additional_data_account_pubkeys,
+                    &additional_data_accounts,
                 )?;
 
                 let mut cross_program_accounts = vec![
@@ -276,6 +276,7 @@ impl NebulaProcessor {
                 ];
 
                 for additional_account_info in additional_data_accounts {
+                    msg!("left acc: {:?} \n", additional_account_info.key);
                     cross_program_accounts.push(additional_account_info.clone());
                 }
 

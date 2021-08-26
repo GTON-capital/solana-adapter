@@ -6,6 +6,7 @@ use solana_program::{
 };
 
 use solana_gravity_contract::gravity::state::PartialStorage;
+use spl_token::state::Mint;
 
 use gravity_misc::model::{AbstractRecordHandler, RecordHandler};
 use gravity_misc::validation::TokenMintConstrained;
@@ -139,7 +140,7 @@ impl LUPortContract {
         });
     }
 
-    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64) -> Result<String, ProgramError> {
+    pub fn attach_data<'a>(&mut self, byte_data: &'a Vec<u8>, input_pubkey: &'a Pubkey, input_amount: &'a mut u64, token_mint_info: &Mint) -> Result<String, ProgramError> {
         let action = &[byte_data[0]];
 
         let command_char = std::str::from_utf8(action).unwrap();
@@ -159,68 +160,15 @@ impl LUPortContract {
                 if input_pubkey.to_bytes() != *port_operation.receiver {
                     return Err(PortError::ErrorOnReceiverUnpack.into());
                 }
-                
-                *input_amount = port_operation.amount_to_u64();
+
+                *input_amount = port_operation.amount_to_u64(token_mint_info.decimals);
 
                 self.swap_status.insert(*port_operation.swap_id, RequestStatus::Success);
-            },
-            PortOperationIdentifier::CONFIRM => {
-                // let port_operation = Self::unpack_byte_array(byte_data)?;
-                // let swap_status = self.swap_status.get(port_operation.swap_id);
-
-                // if !swap_status.is_some() {
-                //     return Err(PortError::InvalidRequestStatus.into());
-                // }
-
-                // if input_pubkey.to_bytes() != *port_operation.receiver {
-                //     return Err(PortError::ErrorOnReceiverUnpack.into());
-                // }
-                
-                self.drop_processed_request(byte_data)?;
             },
             _ => return Err(PortError::InvalidDataOnAttach.into())
         }
         
         Ok(String::from(command_char))
-    }
-
-
-    pub fn drop_processed_request(&mut self, byte_array: &Vec<u8>) -> Result<(), ProgramError>  {
-        let port_operation = Self::unpack_byte_array(byte_array)?;
-        let request_id = port_operation.swap_id;
-
-        let request_drop_res = self.requests.drop(request_id);
-
-        // cannot drop non existing
-        if request_drop_res.is_none() {
-            return Err(PortError::RequestIDForConfirmationIsInvalid.into());
-        }
-
-        let request_drop_res = request_drop_res.unwrap();
-
-        if request_drop_res.destination_address != *port_operation.receiver {
-            return Err(PortError::RequestReceiverMismatch.into());
-        }
-
-        let swap_status = self.swap_status.get(request_id).unwrap();
-
-        // we can't obviously delete unprocessed requests
-        if *swap_status == RequestStatus::New {
-            return Err(PortError::RequestStatusMismatch.into());
-        }
-        
-        let port_amount = port_operation.amount_to_u64();
-
-        if request_drop_res.amount != port_amount {
-            return Err(PortError::RequestAmountMismatch.into());
-        }
-
-        self.swap_status.drop(request_id).unwrap();
-
-        let rq_queue_index = self.requests_queue.iter().position(|r| *r == *request_id).unwrap();
-        self.requests_queue.remove(rq_queue_index);
-
-        Ok(())
     }
 
     pub fn create_transfer_wrap_request(&mut self, record_id: &[u8; 16], amount: u64, sender_data_account: &Pubkey, receiver: &ForeignAddress) -> Result<(), PortError>  {

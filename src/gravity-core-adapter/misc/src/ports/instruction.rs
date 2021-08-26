@@ -3,8 +3,8 @@ use solana_program::{
     pubkey::Pubkey,
     instruction::{AccountMeta, Instruction},
 };
-// use std::mem::size_of;
-// use arrayref::array_ref;
+use solana_program::account_info::AccountInfo;
+
 
 use crate::ports::error::PortError::InvalidInstructionIndex as InvalidInstruction;
 
@@ -48,7 +48,7 @@ impl SubscriberInstruction {
 }
 
 
-pub fn attach_value(
+pub fn attach_value<'a>(
     byte_data: &Vec<u8>,
     oracle: &Pubkey,
     subscriber_data_account: &Pubkey,
@@ -58,7 +58,8 @@ pub fn attach_value(
     recipient_account: &Pubkey,
     ibport_pda_account: &Pubkey,
     signer_pubkeys: &[&Pubkey],
-    additional_data: &[&Pubkey],
+    // additional_data: &[&Pubkey],
+    additional_data: &[AccountInfo<'a>],
 ) -> Result<Instruction, ProgramError> {
     let data = SubscriberInstruction::AttachValue { byte_data: byte_data.clone()  }.pack();
 
@@ -75,7 +76,13 @@ pub fn attach_value(
     }
 
     for additional_data_account in additional_data.iter() {
-        accounts.push(AccountMeta::new(**additional_data_account, false));
+        // accounts.push(AccountMeta::new(**additional_data_account, false));
+        let acc = if additional_data_account.is_writable {
+            AccountMeta::new(*additional_data_account.key, additional_data_account.is_signer)
+        } else {
+            AccountMeta::new_readonly(*additional_data_account.key, additional_data_account.is_signer)
+        };
+        accounts.push(acc);
     }
 
     Ok(Instruction {
